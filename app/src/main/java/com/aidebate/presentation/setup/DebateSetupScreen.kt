@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.AiProvider
+import com.aidebate.domain.model.DebateDifficulty
 import com.aidebate.domain.model.DebateFormat
 import com.aidebate.domain.model.DebateMode
 import com.aidebate.domain.model.ProviderConfig
@@ -111,6 +112,24 @@ fun DebateSetupScreen(
                         onClick = { viewModel.onFormatSelected(DebateFormat.FREE_FLOW) },
                         modifier = Modifier.weight(1f)
                     )
+                }
+
+                // AI Difficulty
+                SectionLabel("AI Difficulty")
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                    DebateDifficulty.entries.forEach { difficulty ->
+                        val label = when (difficulty) {
+                            DebateDifficulty.EASY -> "Easy"
+                            DebateDifficulty.MEDIUM -> "Medium"
+                            DebateDifficulty.HARD -> "Hard"
+                        }
+                        ModeCard(
+                            title = label,
+                            selected = uiState.selectedDifficulty == difficulty,
+                            onClick = { viewModel.onDifficultySelected(difficulty) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
                 // User position (only for User vs AI)
@@ -307,7 +326,7 @@ private fun SectionLabel(text: String) {
 @Composable
 private fun ModeCard(
     title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -330,12 +349,14 @@ private fun ModeCard(
             modifier = Modifier.padding(Spacing.lg),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                icon, contentDescription = null,
-                tint = if (selected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-            Spacer(Modifier.height(Spacing.sm))
+            if (icon != null) {
+                Icon(
+                    icon, contentDescription = null,
+                    tint = if (selected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Spacer(Modifier.height(Spacing.sm))
+            }
             Text(
                 title,
                 style = MaterialTheme.typography.labelLarge,

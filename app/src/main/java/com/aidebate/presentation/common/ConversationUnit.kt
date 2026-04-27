@@ -1,9 +1,7 @@
 package com.aidebate.presentation.common
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -11,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,8 +18,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.aidebate.domain.model.ArgumentHighlight
 import com.aidebate.domain.model.DebateTurn
+import com.aidebate.domain.model.HighlightType
 import com.aidebate.domain.model.SpeakerRole
 import com.aidebate.presentation.theme.*
 
@@ -156,6 +159,23 @@ fun ConversationUnit(
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
+
+            // Score badge (appears asynchronously after AI scores the turn)
+            AnimatedVisibility(
+                visible = turn.score != null,
+                enter = fadeIn(tween(400)) + slideInVertically(tween(300)) { it / 2 }
+            ) {
+                turn.score?.let { score ->
+                    ScoreBadge(overall = score.overall, rationale = score.rationale)
+                }
+            }
+
+            // Highlight quotes
+            if (!turn.highlights.isNullOrEmpty()) {
+                turn.highlights.forEach { highlight ->
+                    HighlightQuote(highlight = highlight)
+                }
+            }
         }
     }
 }
@@ -167,4 +187,126 @@ fun SpeakerRole.toDebateRole(): DebateRole = when (this) {
     SpeakerRole.AI_OPPOSITION -> DebateRole.CON
     SpeakerRole.USER -> DebateRole.USER
     SpeakerRole.MODERATOR -> DebateRole.MODERATOR
+}
+
+// ============================================================
+// SCORE BADGE — shown below scored turns
+// ============================================================
+
+private val ScoreGreen = Color(0xFF2E7D32)
+private val ScoreAmber = Color(0xFFF57F17)
+private val ScoreRed = Color(0xFFC62828)
+
+@Composable
+private fun ScoreBadge(overall: Int, rationale: String) {
+    val scoreColor = when {
+        overall >= 70 -> ScoreGreen
+        overall >= 40 -> ScoreAmber
+        else -> ScoreRed
+    }
+
+    var expanded by remember { mutableStateOf(false) }
+
+    Spacer(Modifier.height(4.dp))
+    Surface(
+        onClick = { expanded = !expanded },
+        shape = RoundedCornerShape(8.dp),
+        color = scoreColor.copy(alpha = 0.08f)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Score",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scoreColor,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    "$overall/100",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = scoreColor
+                )
+                if (rationale.isNotBlank()) {
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        if (expanded) "▲" else "▼",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scoreColor.copy(alpha = 0.5f)
+                    )
+                }
+            }
+            AnimatedVisibility(visible = expanded && rationale.isNotBlank()) {
+                Text(
+                    rationale,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+    }
+}
+
+// ============================================================
+// HIGHLIGHT QUOTE — shows AI-identified argument highlights
+// ============================================================
+
+@Composable
+private fun HighlightQuote(highlight: ArgumentHighlight) {
+    val highlightColor = when (highlight.type) {
+        HighlightType.STRONG_ARGUMENT -> Color(0xFF2E7D32)
+        HighlightType.WEAK_EVIDENCE -> Color(0xFFC62828)
+        HighlightType.LOGICAL_FALLACY -> Color(0xFFE65100)
+        HighlightType.CRITICAL_FLAW -> Color(0xFFB71C1C)
+        HighlightType.NOTABLE_INSIGHT -> Color(0xFF1565C0)
+    }
+    val bgColor = when (highlight.type) {
+        HighlightType.STRONG_ARGUMENT -> Color(0xFFE8F5E9)
+        HighlightType.WEAK_EVIDENCE -> Color(0xFFFFEBEE)
+        HighlightType.LOGICAL_FALLACY -> Color(0xFFFBE9E7)
+        HighlightType.CRITICAL_FLAW -> Color(0xFFFCE4EC)
+        HighlightType.NOTABLE_INSIGHT -> Color(0xFFE3F2FD)
+    }
+
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(350)) + slideInVertically(tween(300)) { it / 3 }
+    ) {
+        Card(
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = bgColor),
+            modifier = Modifier.padding(top = 4.dp)
+        ) {
+            Column(modifier = Modifier.padding(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        highlight.type.name.replace("_", " ").lowercase()
+                            .replaceFirstChar { it.uppercase() },
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = highlightColor
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "· ${highlight.label}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = highlightColor.copy(alpha = 0.7f)
+                    )
+                }
+                if (highlight.quotedText.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        "\"${highlight.quotedText}\"",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+    }
 }

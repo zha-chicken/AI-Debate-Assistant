@@ -17,7 +17,7 @@ import com.aidebate.data.local.entity.*
         RebuttalSessionEntity::class,
         RebuttalAttemptEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

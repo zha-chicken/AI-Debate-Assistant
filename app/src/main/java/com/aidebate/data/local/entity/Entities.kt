@@ -17,6 +17,7 @@ data class DebateSessionEntity(
     @ColumnInfo(name = "model_opposition") val modelOpposition: String,
     val status: String,
     @ColumnInfo(name = "current_phase") val currentPhase: String?,
+    val difficulty: String = "MEDIUM",
     @ColumnInfo(name = "created_at") val createdAt: Long
 )
 
@@ -30,6 +31,10 @@ data class DebateTurnEntity(
     @ColumnInfo(name = "turn_index") val turnIndex: Int,
     @ColumnInfo(name = "provider_used") val providerUsed: String?,
     @ColumnInfo(name = "model_used") val modelUsed: String?,
+    val score: Int? = null,
+    @ColumnInfo(name = "score_rationale") val scoreRationale: String? = null,
+    @ColumnInfo(name = "scored_by") val scoredBy: String? = null,
+    @ColumnInfo(name = "highlights_json") val highlightsJson: String? = null,
     @ColumnInfo(name = "created_at") val createdAt: Long
 )
 

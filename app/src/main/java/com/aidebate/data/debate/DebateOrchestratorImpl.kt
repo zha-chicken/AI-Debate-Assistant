@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -104,6 +106,11 @@ class DebateOrchestratorImpl @Inject constructor(
             debateRepository.addTurn(aiTurn)
             turnIndex++
 
+            // Score the user's turn asynchronously
+            scope.launch {
+                scoreTurnAsync(userTurn, SpeakerRole.AI_OPPOSITION, currentSession)
+            }
+
             val result = stateMachine?.advance()
             if (result is DebateStateMachine.AdvanceResult.Completed) {
                 completeDebate(currentSession)
@@ -150,6 +157,14 @@ class DebateOrchestratorImpl @Inject constructor(
             _turns.value = _turns.value + aiTurn
             debateRepository.addTurn(aiTurn)
             turnIndex++
+
+            // Score the previous non-moderator turn asynchronously
+            val previousTurn = _turns.value.dropLast(1).lastOrNull { it.speakerRole != SpeakerRole.MODERATOR }
+            if (previousTurn != null) {
+                scope.launch {
+                    scoreTurnAsync(previousTurn, speakerRole, currentSession)
+                }
+            }
 
             // Check what's next
             val nextState = stateMachine?.advance()
@@ -297,6 +312,7 @@ class DebateOrchestratorImpl @Inject constructor(
             SpeakerRole.AI_OPPOSITION -> "AGAINST"
             else -> "NEUTRAL"
         }
+        val difficulty = _session.value?.difficulty ?: DebateDifficulty.MEDIUM
         return buildString {
             append("You are an expert debater arguing $side the topic: \"$topicTitle\".\n")
             if (phase != null) {
@@ -309,6 +325,12 @@ class DebateOrchestratorImpl @Inject constructor(
             } else {
                 append("Respond naturally to the opponent's arguments. Be persuasive, logical, and civil.")
             }
+            // Difficulty adjustment
+            when (difficulty) {
+                DebateDifficulty.EASY -> append("\nArgue at a basic level. Use simpler language and occasionally make weaker points that your opponent could exploit.")
+                DebateDifficulty.MEDIUM -> append("\nArgue at a standard competitive level. Be logical and persuasive.")
+                DebateDifficulty.HARD -> append("\nArgue at an expert level. Use sophisticated logic, strong evidence, and rhetorical techniques. Make tight, difficult-to-refute arguments.")
+            }
             append("\nKeep your response under 250 words. Be concise but impactful.")
         }
     }
@@ -317,6 +339,76 @@ class DebateOrchestratorImpl @Inject constructor(
         return _turns.value.joinToString("\n\n") { turn ->
             "${turn.speakerRole.name}: ${turn.content}"
         }
+    }
+
+    // ============================================================
+    // LIVE SCORING — evaluates a single turn via AI
+    // ============================================================
+
+    private suspend fun scoreTurnAsync(
+        turn: DebateTurn,
+        scorerRole: SpeakerRole,
+        @Suppress("UNUSED_PARAMETER") session: DebateSession
+    ) {
+        if (turn.score != null) return // already scored
+        try {
+            val config = providerConfigRepository.getConfig(AiProvider.OPENAI)
+                ?: return
+            val adapter = adapterFactory.getAdapter(AiProvider.OPENAI)
+
+            val prompt = buildString {
+                append("You are a debate judge. Score the following argument from a debate on \"$topicTitle\".\n")
+                append("Rate it from 0-100 based on logic, evidence, clarity, and persuasiveness.\n\n")
+                append("ARGUMENT (${turn.speakerRole.name}):\n\"${turn.content}\"\n\n")
+                append("Respond in JSON format ONLY with no markdown:\n")
+                append("""{"overall": <0-100>, "rationale": "<1-2 sentence explanation>", "highlights": [{"type": "STRONG_ARGUMENT|WEAK_EVIDENCE|LOGICAL_FALLACY|CRITICAL_FLAW|NOTABLE_INSIGHT", "quotedText": "<exact quoted text>", "label": "<brief label>"}]}""")
+            }
+
+            val chatResult = adapter.chat(
+                systemPrompt = "You are an impartial debate judge. Return ONLY valid JSON.",
+                conversationHistory = listOf(ChatMessage("user", prompt)),
+                config = ChatConfig(model = config.modelName.ifBlank { "gpt-3.5-turbo" }),
+                providerConfig = config
+            )
+
+            val scoredTurn = parseScoreResponse(chatResult.content, turn, scorerRole)
+            debateRepository.updateTurn(scoredTurn)
+            // Update in-memory turns so UI observes the change
+            _turns.value = _turns.value.map { if (it.id == scoredTurn.id) scoredTurn else it }
+        } catch (_: Exception) {
+            // Scoring is best-effort; failures don't block the debate
+        }
+    }
+
+    private fun parseScoreResponse(
+        json: String,
+        turn: DebateTurn,
+        scorerRole: SpeakerRole
+    ): DebateTurn {
+        val cleanJson = json.trim()
+            .removePrefix("```json")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
+        val obj = JSONObject(cleanJson)
+        val score = TurnScore(
+            overall = obj.getInt("overall").coerceIn(0, 100),
+            rationale = obj.optString("rationale", ""),
+            scoredBy = scorerRole
+        )
+        val highlightsArr = obj.optJSONArray("highlights")
+        val highlights = if (highlightsArr != null && highlightsArr.length() > 0) {
+            (0 until highlightsArr.length()).map { i ->
+                val h = highlightsArr.getJSONObject(i)
+                ArgumentHighlight(
+                    type = try { HighlightType.valueOf(h.getString("type")) } catch (_: Exception) { HighlightType.NOTABLE_INSIGHT },
+                    quotedText = h.optString("quotedText", ""),
+                    label = h.optString("label", "")
+                )
+            }
+        } else null
+
+        return turn.copy(score = score, highlights = highlights)
     }
 
     private fun parseJudgeResponse(response: String): Pair<SpeakerRole?, String> {

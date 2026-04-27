@@ -10,6 +10,22 @@ enum class SpeakerRole { USER, AI_PROPOSITION, AI_OPPOSITION, MODERATOR }
 
 enum class StructuredPhase { OPENING, REBUTTAL, CLOSING }
 
+enum class DebateDifficulty { EASY, MEDIUM, HARD }
+
+enum class HighlightType { STRONG_ARGUMENT, WEAK_EVIDENCE, LOGICAL_FALLACY, CRITICAL_FLAW, NOTABLE_INSIGHT }
+
+data class TurnScore(
+    val overall: Int,
+    val rationale: String,
+    val scoredBy: SpeakerRole? = null
+)
+
+data class ArgumentHighlight(
+    val type: HighlightType,
+    val quotedText: String,
+    val label: String
+)
+
 enum class AiProvider(val displayName: String, val defaultBaseUrl: String) {
     OPENAI("OpenAI", "https://api.openai.com/"),
     ANTHROPIC("Anthropic", "https://api.anthropic.com/"),
@@ -48,6 +64,7 @@ data class DebateSession(
     val modelOpposition: String = "",
     val status: SessionStatus = SessionStatus.ACTIVE,
     val currentPhase: StructuredPhase? = null,
+    val difficulty: DebateDifficulty = DebateDifficulty.MEDIUM,
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -62,6 +79,8 @@ data class DebateTurn(
     val turnIndex: Int = 0,
     val providerUsed: AiProvider? = null,
     val modelUsed: String? = null,
+    val score: TurnScore? = null,
+    val highlights: List<ArgumentHighlight>? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
 

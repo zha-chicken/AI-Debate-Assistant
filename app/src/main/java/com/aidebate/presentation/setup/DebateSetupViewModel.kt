@@ -15,6 +15,7 @@ data class DebateSetupUiState(
     val topicTitle: String = "",
     val selectedMode: DebateMode = DebateMode.USER_VS_AI,
     val selectedFormat: DebateFormat = DebateFormat.STRUCTURED,
+    val selectedDifficulty: DebateDifficulty = DebateDifficulty.MEDIUM,
     val userSide: SpeakerRole? = SpeakerRole.AI_PROPOSITION,
     val enabledProviders: List<ProviderConfig> = emptyList(),
     val providerProposition: AiProvider? = null,
@@ -63,6 +64,10 @@ class DebateSetupViewModel @Inject constructor(
         _uiState.update { it.copy(selectedMode = mode) }
     }
 
+    fun onDifficultySelected(difficulty: DebateDifficulty) {
+        _uiState.update { it.copy(selectedDifficulty = difficulty) }
+    }
+
     fun onFormatSelected(format: DebateFormat) {
         _uiState.update { it.copy(selectedFormat = format) }
     }
@@ -92,6 +97,7 @@ class DebateSetupViewModel @Inject constructor(
             topicId = topicId,
             mode = state.selectedMode,
             format = state.selectedFormat,
+            difficulty = state.selectedDifficulty,
             userSide = if (state.selectedMode == DebateMode.USER_VS_AI) state.userSide else null,
             providerProposition = state.providerProposition ?: AiProvider.OPENAI,
             providerOpposition = state.providerOpposition ?: AiProvider.OPENAI,

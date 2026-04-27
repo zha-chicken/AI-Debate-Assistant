@@ -33,6 +33,9 @@ class DebateRepositoryImpl @Inject constructor(
         turnDao.insert(turn.toEntity())
     }
 
+    override suspend fun updateTurn(turn: DebateTurn) {
+        turnDao.insert(turn.toEntity())
+    }
     override fun getTurns(sessionId: String): Flow<List<DebateTurn>> =
         turnDao.getBySessionId(sessionId).map { list -> list.map { it.toDomain() } }
 
