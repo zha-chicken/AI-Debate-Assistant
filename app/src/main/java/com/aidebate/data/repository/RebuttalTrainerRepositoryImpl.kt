@@ -1,0 +1,182 @@
+package com.aidebate.data.repository
+
+import com.aidebate.data.local.dao.RebuttalAttemptDao
+import com.aidebate.data.local.dao.RebuttalSessionDao
+import com.aidebate.data.local.entity.RebuttalAttemptEntity
+import com.aidebate.data.local.entity.RebuttalSessionEntity
+import com.aidebate.data.remote.adapter.AiProviderAdapter
+import com.aidebate.data.remote.adapter.ProviderAdapterFactory
+import com.aidebate.domain.model.*
+import com.aidebate.domain.repository.ProviderConfigRepository
+import com.aidebate.domain.repository.RebuttalTrainerRepository
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class RebuttalTrainerRepositoryImpl @Inject constructor(
+    private val sessionDao: RebuttalSessionDao,
+    private val attemptDao: RebuttalAttemptDao,
+    private val providerConfigRepository: ProviderConfigRepository,
+    private val adapterFactory: ProviderAdapterFactory
+) : RebuttalTrainerRepository {
+
+    override fun getAllSessions(): Flow<List<RebuttalSession>> =
+        sessionDao.getAll().map { list -> list.map { it.toDomain() } }
+
+    override suspend fun createSession(session: RebuttalSession) {
+        sessionDao.insert(session.toEntity())
+    }
+
+    override suspend fun getSession(sessionId: String): RebuttalSession? =
+        sessionDao.getById(sessionId)?.toDomain()
+
+    override fun getAttempts(sessionId: String): Flow<List<RebuttalAttempt>> =
+        attemptDao.getBySessionId(sessionId).map { list -> list.map { it.toDomain() } }
+
+    override suspend fun saveAttempt(attempt: RebuttalAttempt) {
+        attemptDao.insert(attempt.toEntity())
+    }
+
+    private suspend fun getAdapter(): Pair<AiProviderAdapter, ProviderConfig> {
+        val configs = providerConfigRepository.getEnabledConfigs().first()
+        val config = configs.firstOrNull() ?: throw Exception("No AI provider configured")
+        val adapter = adapterFactory.getAdapter(config.provider)
+        return adapter to config
+    }
+
+    suspend fun generateRebuttalPrompt(topicTitle: String, userSide: String, difficulty: String): String {
+        val (adapter, config) = getAdapter()
+        val difficultyDesc = when (difficulty) {
+            "easy" -> "with an obvious flaw"
+            "hard" -> "that is well-structured and subtle"
+            else -> "with a subtle flaw"
+        }
+        val prompt = "Generate a debate argument for the topic \"$topicTitle\" " +
+            "that argues ${if (userSide == "AGAINST") "AGAINST" else "FOR"} the topic, " +
+            "$difficultyDesc. The argument should be 2-4 sentences, persuasive, and ready for rebuttal practice."
+        val result = adapter.chat(
+            systemPrompt = "You simulate a skilled debater generating practice arguments.",
+            conversationHistory = listOf(ChatMessage("user", prompt)),
+            config = ChatConfig(model = config.modelName),
+            providerConfig = config
+        )
+        return result.content
+    }
+
+    suspend fun scoreRebuttal(
+        sessionId: String,
+        promptArgument: String,
+        userResponse: String
+    ): RebuttalAttempt {
+        val (adapter, config) = getAdapter()
+        val prompt = buildString {
+            append("Score this rebuttal on 4 criteria (each out of 25):\n")
+            append("1. Logic: Did they identify logical gaps?\n")
+            append("2. Clarity: Is the rebuttal clear and well-structured?\n")
+            append("3. Persuasion: How convincing is it?\n")
+            append("4. Evidence: Did they use sound reasoning?\n\n")
+            append("Original argument: \"$promptArgument\"\n\n")
+            append("Rebuttal: \"$userResponse\"\n\n")
+            append("Return ONLY a JSON object with fields: logicScore (int), clarityScore (int), ")
+            append("persuasionScore (int), evidenceScore (int), totalScore (int), feedback (string, 2-3 sentences of specific advice).")
+        }
+        val result = adapter.chat(
+            systemPrompt = "You are a debate coach scoring rebuttals. Always return valid JSON.",
+            conversationHistory = listOf(ChatMessage("user", prompt)),
+            config = ChatConfig(model = config.modelName, temperature = 0.3),
+            providerConfig = config
+        )
+        return parseScoreResult(sessionId, result.content)
+    }
+
+    suspend fun analyzeFallacies(text: String): List<FallacyResult> {
+        val (adapter, config) = getAdapter()
+        val prompt = buildString {
+            append("Analyze the following text for logical fallacies.\n")
+            append("Common fallacies include: ad hominem, straw man, false dichotomy, ")
+            append("slippery slope, circular reasoning, hasty generalization, appeal to authority, ")
+            append("red herring, bandwagon, false cause, appeal to emotion, no true scotsman, ")
+            append("tu quoque, begging the question, equivocation.\n\n")
+            append("Text: \"$text\"\n\n")
+            append("Return ONLY a JSON array of objects with fields: ")
+            append("name (fallacy name), quotedText (the exact quote from the text), ")
+            append("explanation (1-2 sentences explaining why this is that fallacy). ")
+            append("If no fallacies found, return an empty array [].")
+        }
+        val result = adapter.chat(
+            systemPrompt = "You are a logic expert identifying fallacies. Always return valid JSON.",
+            conversationHistory = listOf(ChatMessage("user", prompt)),
+            config = ChatConfig(model = config.modelName, temperature = 0.2),
+            providerConfig = config
+        )
+        return parseFallacyResult(result.content)
+    }
+
+    private fun parseScoreResult(sessionId: String, json: String): RebuttalAttempt {
+        val cleanedJson = json.trim()
+            .removePrefix("```json").removePrefix("```")
+            .removeSuffix("```").trim()
+        val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+        val mapType = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
+        val map = moshi.adapter<Map<String, Any>>(mapType).fromJson(cleanedJson) ?: emptyMap()
+        return RebuttalAttempt(
+            sessionId = sessionId,
+            promptArgument = "",
+            userResponse = "",
+            logicScore = (map["logicScore"] as? Number)?.toInt() ?: 0,
+            clarityScore = (map["clarityScore"] as? Number)?.toInt() ?: 0,
+            persuasionScore = (map["persuasionScore"] as? Number)?.toInt() ?: 0,
+            evidenceScore = (map["evidenceScore"] as? Number)?.toInt() ?: 0,
+            totalScore = (map["totalScore"] as? Number)?.toInt() ?: 0,
+            feedback = map["feedback"]?.toString() ?: ""
+        )
+    }
+
+    private fun parseFallacyResult(json: String): List<FallacyResult> {
+        val cleanedJson = json.trim()
+            .removePrefix("```json").removePrefix("```")
+            .removeSuffix("```").trim()
+        val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+        val listType = Types.newParameterizedType(List::class.java, Map::class.java)
+        val parsed = moshi.adapter<List<Map<String, Any>>>(listType).fromJson(cleanedJson) ?: return emptyList()
+        return parsed.map { map ->
+            FallacyResult(
+                name = map["name"]?.toString() ?: "Unknown",
+                quotedText = map["quotedText"]?.toString() ?: "",
+                explanation = map["explanation"]?.toString() ?: ""
+            )
+        }
+    }
+}
+
+private fun RebuttalSession.toEntity() = RebuttalSessionEntity(
+    id = id, topicId = topicId, topicTitle = topicTitle,
+    userSide = userSide, difficulty = difficulty, createdAt = createdAt
+)
+
+private fun RebuttalSessionEntity.toDomain() = RebuttalSession(
+    id = id, topicId = topicId, topicTitle = topicTitle,
+    userSide = userSide, difficulty = difficulty, createdAt = createdAt
+)
+
+private fun RebuttalAttempt.toEntity() = RebuttalAttemptEntity(
+    id = id, sessionId = sessionId, promptArgument = promptArgument,
+    userResponse = userResponse, timeLimitSec = timeLimitSec,
+    timeTakenMs = timeTakenMs, logicScore = logicScore, clarityScore = clarityScore,
+    persuasionScore = persuasionScore, evidenceScore = evidenceScore,
+    totalScore = totalScore, feedback = feedback, createdAt = createdAt
+)
+
+private fun RebuttalAttemptEntity.toDomain() = RebuttalAttempt(
+    id = id, sessionId = sessionId, promptArgument = promptArgument,
+    userResponse = userResponse, timeLimitSec = timeLimitSec,
+    timeTakenMs = timeTakenMs, logicScore = logicScore, clarityScore = clarityScore,
+    persuasionScore = persuasionScore, evidenceScore = evidenceScore,
+    totalScore = totalScore, feedback = feedback, createdAt = createdAt
+)
