@@ -19,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.DebateMode
 import com.aidebate.domain.model.DebateSessionSummary
 import com.aidebate.domain.model.SessionStatus
+import com.aidebate.presentation.theme.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -52,12 +53,11 @@ fun DebateHistoryScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        Icons.Default.History,
-                        contentDescription = null,
+                        Icons.Default.History, null,
                         modifier = Modifier.size(64.dp),
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                     )
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(Spacing.lg))
                     Text(
                         "No debates yet",
                         style = MaterialTheme.typography.titleMedium,
@@ -76,10 +76,10 @@ fun DebateHistoryScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                contentPadding = PaddingValues(Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
-                items(uiState.sessions) { session ->
+                items(uiState.sessions, key = { it.id }) { session ->
                     HistoryCard(
                         session = session,
                         onClick = { onSessionSelected(session.id) },
@@ -102,12 +102,13 @@ private fun HistoryCard(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+        shape = Radii.mediumShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        )
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -117,10 +118,11 @@ private fun HistoryCard(
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2
                 )
-                Spacer(Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Spacer(Modifier.height(Spacing.xs))
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    // Mode badge
                     Surface(
-                        shape = RoundedCornerShape(4.dp),
+                        shape = Radii.smallShape,
                         color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(
@@ -130,8 +132,9 @@ private fun HistoryCard(
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
+                    // Turn count badge
                     Surface(
-                        shape = RoundedCornerShape(4.dp),
+                        shape = Radii.smallShape,
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                     ) {
                         Text(
@@ -141,19 +144,38 @@ private fun HistoryCard(
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
+                    // Status badge
+                    if (session.status != SessionStatus.ACTIVE) {
+                        Surface(
+                            shape = Radii.smallShape,
+                            color = when (session.status) {
+                                SessionStatus.COMPLETED -> MaterialTheme.colorScheme.tertiaryContainer
+                                else -> MaterialTheme.colorScheme.errorContainer
+                            }
+                        ) {
+                            Text(
+                                session.status.name.lowercase().replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = when (session.status) {
+                                    SessionStatus.COMPLETED -> MaterialTheme.colorScheme.onTertiaryContainer
+                                    else -> MaterialTheme.colorScheme.onErrorContainer
+                                },
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
                 Text(
                     formatDate(session.createdAt),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = Spacing.xs)
                 )
             }
 
             IconButton(onClick = { showDelete = true }) {
                 Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Delete",
+                    Icons.Default.Delete, "Delete",
                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
                 )
             }

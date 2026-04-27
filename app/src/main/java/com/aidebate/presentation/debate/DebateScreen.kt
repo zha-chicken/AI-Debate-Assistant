@@ -4,10 +4,10 @@ package com.aidebate.presentation.debate
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,12 +20,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.*
+import com.aidebate.presentation.common.*
+import com.aidebate.presentation.theme.*
+
+// ============================================================
+// TIMELINE — computed to interleave turns and phase dividers
+// ============================================================
+
+private sealed interface TimelineItem {
+    data class Turn(val turn: DebateTurn) : TimelineItem
+    data class Phase(val phase: StructuredPhase) : TimelineItem
+}
+
+// ============================================================
+// SCREEN
+// ============================================================
 
 @Composable
 fun DebateScreen(
@@ -36,12 +53,28 @@ fun DebateScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    val isAiVsAi = uiState.mode == DebateMode.AI_VS_AI
 
     LaunchedEffect(sessionId) { viewModel.initialize(sessionId) }
 
+    // Auto-scroll to latest item
     LaunchedEffect(uiState.turns.size) {
         if (uiState.turns.isNotEmpty()) {
             listState.animateScrollToItem(uiState.turns.size - 1)
+        }
+    }
+
+    // Build timeline with phase dividers
+    val timeline = remember(uiState.turns) {
+        buildList {
+            var lastPhase: StructuredPhase? = null
+            for (turn in uiState.turns) {
+                if (turn.phase != null && turn.phase != lastPhase) {
+                    add(TimelineItem.Phase(turn.phase))
+                    lastPhase = turn.phase
+                }
+                add(TimelineItem.Turn(turn))
+            }
         }
     }
 
@@ -104,29 +137,53 @@ fun DebateScreen(
                 }
                 else -> {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Turn list
                         LazyColumn(
                             state = listState,
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            contentPadding = PaddingValues(Spacing.lg),
+                            verticalArrangement = Arrangement.spacedBy(Spacing.md)
                         ) {
-                            items(uiState.turns.size) { index ->
-                                val turn = uiState.turns[index]
-                                AnimatedDebateBubble(turn = turn, index = index)
+                            // Turns with phase dividers
+                            items(timeline.size, key = { timeline[it].hashCode() }) { index ->
+                                when (val item = timeline[index]) {
+                                    is TimelineItem.Turn -> {
+                                        ConversationUnit(
+                                            turn = item.turn,
+                                            importance = TurnImportance.NORMAL
+                                        )
+                                    }
+                                    is TimelineItem.Phase -> {
+                                        val label = when (item.phase) {
+                                            StructuredPhase.OPENING -> "Opening Arguments"
+                                            StructuredPhase.REBUTTAL -> "Rebuttal Phase"
+                                            StructuredPhase.CLOSING -> "Closing Arguments"
+                                        }
+                                        PhaseDivider(label = label)
+                                    }
+                                }
                             }
 
                             // Typing indicator
                             if (uiState.isThinking) {
-                                item { TypingIndicator() }
+                                item(key = "typing") {
+                                    val thinkingRole = when (val state = uiState.contextualState) {
+                                        is DebateContextualState.WaitingForAiTurn -> state.speakerRole.toDebateRole()
+                                        else -> DebateRole.PRO
+                                    }
+                                    val tokens = RoleTokenDefaults.forRole(thinkingRole)
+                                    SmartTypingIndicator(
+                                        roleName = tokens.label,
+                                        roleTokens = tokens
+                                    )
+                                }
                             }
 
                             // Tap to advance (AI vs AI)
                             val isWaitingForTap = uiState.contextualState is DebateContextualState.WaitingForTap
                             if (isWaitingForTap) {
-                                item {
+                                item(key = "tapAdvance") {
                                     val tapState = uiState.contextualState as DebateContextualState.WaitingForTap
                                     TapToAdvanceOverlay(
                                         nextSpeaker = tapState.nextSpeaker,
@@ -136,12 +193,12 @@ fun DebateScreen(
                                 }
                             }
 
-                            // Completed state
+                            // End card
                             if (uiState.contextualState is DebateContextualState.DebateCompleted ||
                                 uiState.contextualState is DebateContextualState.Judging
                             ) {
-                                item {
-                                    DebateEndCard(
+                                item(key = "endCard") {
+                                    CelebrationEndCard(
                                         result = uiState.result,
                                         isJudging = uiState.contextualState is DebateContextualState.Judging,
                                         onJudge = { viewModel.requestJudgment() },
@@ -150,9 +207,9 @@ fun DebateScreen(
                                 }
                             }
 
-                            // Error state
+                            // Error
                             if (uiState.error != null) {
-                                item {
+                                item(key = "error") {
                                     ErrorCard(
                                         message = uiState.error!!,
                                         onDismiss = { viewModel.clearError() },
@@ -167,170 +224,42 @@ fun DebateScreen(
                             }
                         }
                     }
+
+                    // AI vs AI split-color background
+                    if (isAiVsAi && uiState.turns.isNotEmpty()) {
+                        AiVsAiBackground()
+                    }
                 }
             }
         }
     }
 }
 
-@Composable
-fun AnimatedDebateBubble(turn: DebateTurn, index: Int) {
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(turn.id) { visible = true }
+// ============================================================
+// AI vs AI — split-color background overlay
+// ============================================================
 
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(tween(300)) + slideInVertically(
-            tween(400, easing = EaseOutCubic),
-            initialOffsetY = { it / 2 }
+@Composable
+private fun AiVsAiBackground() {
+    val proTokens = RoleTokenDefaults.Pro
+    val conTokens = RoleTokenDefaults.Con
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        drawRect(
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    proTokens.color.dim.copy(alpha = 0.03f),
+                    Color.Transparent,
+                    conTokens.color.dim.copy(alpha = 0.03f),
+                )
+            )
         )
-    ) {
-        DebateBubble(turn = turn)
     }
 }
 
-@Composable
-fun DebateBubble(turn: DebateTurn) {
-    val isProposition = turn.speakerRole == SpeakerRole.AI_PROPOSITION
-    val isUser = turn.speakerRole == SpeakerRole.USER
-    val alignment = if (isUser) Alignment.End else Alignment.Start
-    val bubbleColor = when (turn.speakerRole) {
-        SpeakerRole.AI_PROPOSITION -> MaterialTheme.colorScheme.primaryContainer
-        SpeakerRole.AI_OPPOSITION -> MaterialTheme.colorScheme.secondaryContainer
-        SpeakerRole.USER -> MaterialTheme.colorScheme.tertiaryContainer
-        SpeakerRole.MODERATOR -> MaterialTheme.colorScheme.surfaceVariant
-    }
-    val textColor = when (turn.speakerRole) {
-        SpeakerRole.AI_PROPOSITION -> MaterialTheme.colorScheme.onPrimaryContainer
-        SpeakerRole.AI_OPPOSITION -> MaterialTheme.colorScheme.onSecondaryContainer
-        SpeakerRole.USER -> MaterialTheme.colorScheme.onTertiaryContainer
-        SpeakerRole.MODERATOR -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val label = when (turn.speakerRole) {
-        SpeakerRole.AI_PROPOSITION -> "PRO"
-        SpeakerRole.AI_OPPOSITION -> "CON"
-        SpeakerRole.USER -> "YOU"
-        SpeakerRole.MODERATOR -> "JUDGE"
-    }
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = alignment
-    ) {
-        Row(
-            modifier = Modifier.padding(bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (!isUser) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(bubbleColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        label.take(1),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor
-                    )
-                }
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    label,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor
-                )
-            } else {
-                Text(
-                    label,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor
-                )
-                Spacer(Modifier.width(6.dp))
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(bubbleColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        label.take(1),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor
-                    )
-                }
-            }
-        }
-
-        Surface(
-            modifier = Modifier.widthIn(max = 320.dp),
-            shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomStart = if (isUser) 16.dp else 4.dp,
-                bottomEnd = if (isUser) 4.dp else 16.dp
-            ),
-            color = bubbleColor
-        ) {
-            Text(
-                text = turn.content,
-                modifier = Modifier.padding(12.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = textColor
-            )
-        }
-
-        if (turn.providerUsed != null) {
-            Text(
-                "${turn.providerUsed.displayName}${turn.modelUsed?.let { " / $it" } ?: ""}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                modifier = Modifier.padding(top = 2.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun TypingIndicator() {
-    val infiniteTransition = rememberInfiniteTransition(label = "typing")
-    val dots = listOf(
-        infiniteTransition.animateFloat(0.3f, 1f, infiniteRepeatable(tween(500)), label = "d1"),
-        infiniteTransition.animateFloat(0.3f, 1f, infiniteRepeatable(tween(500, 150)), label = "d2"),
-        infiniteTransition.animateFloat(0.3f, 1f, infiniteRepeatable(tween(500, 300)), label = "d3")
-    )
-
-    Surface(
-        shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.widthIn(max = 72.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            for (dot in dots) {
-                Box(
-                    modifier = Modifier
-                        .size(7.dp)
-                        .scale(dot.value)
-                        .alpha(dot.value)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.onSurfaceVariant)
-                )
-                Spacer(Modifier.width(4.dp))
-            }
-        }
-    }
-    Spacer(Modifier.height(4.dp))
-}
+// ============================================================
+// TAP TO ADVANCE
+// ============================================================
 
 @Composable
 fun TapToAdvanceOverlay(
@@ -338,6 +267,8 @@ fun TapToAdvanceOverlay(
     nextProvider: String,
     onTap: () -> Unit
 ) {
+    val role = nextSpeaker.toDebateRole()
+    val tokens = RoleTokenDefaults.forRole(role)
     val alpha = rememberInfiniteTransition(label = "tapPulse").animateFloat(
         0.6f, 1f, infiniteRepeatable(tween(1000)), label = "alpha"
     )
@@ -345,108 +276,144 @@ fun TapToAdvanceOverlay(
     Card(
         onClick = onTap,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = Radii.mediumShape,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = alpha.value)
+            containerColor = tokens.color.container.copy(alpha = alpha.value * 0.8f)
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(Spacing.lg),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             Icon(
                 Icons.Default.TouchApp,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
+                tint = tokens.color.primary
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(Spacing.md))
             Text(
                 "Tap to see $nextProvider's response",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary
+                color = tokens.color.primary
             )
         }
     }
-    Spacer(Modifier.height(4.dp))
 }
 
+// ============================================================
+// CELEBRATION END CARD
+// ============================================================
+
 @Composable
-fun DebateEndCard(
+fun CelebrationEndCard(
     result: DebateResult?,
     isJudging: Boolean,
     onJudge: () -> Unit,
     onViewResult: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (result != null) MaterialTheme.colorScheme.tertiaryContainer
-            else MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                if (result != null) Icons.Default.EmojiEvents else Icons.Default.CheckCircle,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = if (result != null) MaterialTheme.colorScheme.tertiary
-                else MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.height(12.dp))
+    val winnerRole = result?.winner?.toDebateRole()
+    val winnerTokens = winnerRole?.let { RoleTokenDefaults.forRole(it) }
 
-            if (result != null) {
-                Text(
-                    "Debate Complete",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                if (result.winner != null) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(500)) + slideInVertically(tween(400)) { it / 2 }
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = Radii.largeShape,
+            colors = CardDefaults.cardColors(
+                containerColor = if (result != null) MaterialTheme.colorScheme.tertiaryContainer
+                else MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(Spacing.xl),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (result != null) {
+                    // Trophy with glow
+                    GlowWrapper(
+                        glowColor = winnerTokens?.color?.glow ?: MaterialTheme.colorScheme.tertiary,
+                        shape = CircleShape,
+                        isActive = true,
+                    ) {
+                        Box(
+                            modifier = Modifier.size(64.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.EmojiEvents,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = winnerTokens?.color?.primary ?: MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(Spacing.md))
+
+                    // Animated title
                     Text(
-                        "Winner: ${result.winner.name}",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(top = 4.dp)
+                        "Debate Complete",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
                     )
+
+                    if (result.winner != null) {
+                        Spacer(Modifier.height(Spacing.sm))
+                        Text(
+                            text = "Winner: ${result.winner.name}",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = winnerTokens?.color?.primary ?: MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
+
                     if (result.summary.isNotBlank()) {
+                        Spacer(Modifier.height(Spacing.sm))
                         Text(
                             result.summary,
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 8.dp)
+                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
                         )
                     }
-                }
-                Spacer(Modifier.height(12.dp))
-                OutlinedButton(onClick = onViewResult) {
-                    Text("View Full Result")
-                }
-            } else if (isJudging) {
-                Text("Judging in progress...", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-            } else {
-                Text("Debate Complete", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("Would you like an AI to judge this debate?",
-                    style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 4.dp))
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = onViewResult) { Text("Skip") }
-                    Button(onClick = onJudge) {
-                        Icon(Icons.Default.Gavel, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Judge Debate")
+                    Spacer(Modifier.height(Spacing.lg))
+                    OutlinedButton(onClick = onViewResult) {
+                        Text("View Full Result")
+                    }
+                } else if (isJudging) {
+                    Text("Judging in progress...", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(Spacing.sm))
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                } else {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(Spacing.md))
+                    Text("Debate Complete", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Would you like an AI to judge this debate?",
+                        style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = Spacing.xs))
+                    Spacer(Modifier.height(Spacing.md))
+                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                        OutlinedButton(onClick = onViewResult) { Text("Skip") }
+                        Button(onClick = onJudge) {
+                            Icon(Icons.Default.Gavel, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Judge Debate")
+                        }
                     }
                 }
             }
@@ -454,32 +421,40 @@ fun DebateEndCard(
     }
 }
 
+// ============================================================
+// ERROR CARD
+// ============================================================
+
 @Composable
 fun ErrorCard(message: String, onDismiss: () -> Unit, onRetry: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = Radii.mediumShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(Spacing.lg)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.ErrorOutline, contentDescription = null,
                     tint = MaterialTheme.colorScheme.error)
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Spacing.sm))
                 Text("Error", fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onErrorContainer)
             }
             Text(message, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.padding(top = 4.dp))
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                modifier = Modifier.padding(top = Spacing.xs))
+            Spacer(Modifier.height(Spacing.sm))
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 TextButton(onClick = onDismiss) { Text("Dismiss") }
                 Button(onClick = onRetry) { Text("Retry") }
             }
         }
     }
 }
+
+// ============================================================
+// USER INPUT BAR
+// ============================================================
 
 @Composable
 fun UserInputBar(
@@ -495,7 +470,7 @@ fun UserInputBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             verticalAlignment = Alignment.Bottom
         ) {
             OutlinedTextField(
@@ -508,7 +483,7 @@ fun UserInputBar(
                 maxLines = 4,
                 enabled = enabled
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Spacing.sm))
             FilledIconButton(
                 onClick = onSend,
                 enabled = enabled && value.isNotBlank(),
@@ -520,3 +495,4 @@ fun UserInputBar(
         }
     }
 }
+

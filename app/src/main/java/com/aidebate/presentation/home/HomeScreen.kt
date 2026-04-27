@@ -8,8 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.aidebate.presentation.theme.*
 import kotlinx.coroutines.delay
 
 @Composable
@@ -53,23 +55,17 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(Modifier.height(Spacing.md))
+
             // Hero section
-            Spacer(Modifier.height(12.dp))
             HeroSection()
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(Spacing.xxl))
 
-            // Main action cards
-            Text(
-                "Debate Actions",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-            )
-
+            // Debate Actions
+            SectionHeader("Debate Actions")
             StaggeredCard(
                 index = 0,
                 title = "New Debate",
@@ -80,7 +76,6 @@ fun HomeScreen(
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 accentColor = MaterialTheme.colorScheme.primary
             )
-
             StaggeredCard(
                 index = 1,
                 title = "Debate History",
@@ -92,17 +87,10 @@ fun HomeScreen(
                 accentColor = MaterialTheme.colorScheme.secondary
             )
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(Spacing.xl))
 
-            // Preparation Tools section
-            Text(
-                "Preparation Tools",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-            )
-
+            // Preparation Tools
+            SectionHeader("Preparation Tools")
             StaggeredCard(
                 index = 2,
                 title = "Argument Map",
@@ -113,7 +101,6 @@ fun HomeScreen(
                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                 accentColor = MaterialTheme.colorScheme.tertiary
             )
-
             StaggeredCard(
                 index = 3,
                 title = "Rebuttal Trainer",
@@ -124,7 +111,6 @@ fun HomeScreen(
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 accentColor = MaterialTheme.colorScheme.primary
             )
-
             StaggeredCard(
                 index = 4,
                 title = "Fallacy Detector",
@@ -136,7 +122,7 @@ fun HomeScreen(
                 accentColor = MaterialTheme.colorScheme.secondary
             )
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(Spacing.lg))
 
             // Settings
             StaggeredCard(
@@ -150,23 +136,73 @@ fun HomeScreen(
                 accentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(Spacing.xl))
         }
     }
 }
 
 @Composable
+private fun SectionHeader(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = Spacing.sm)
+    )
+}
+
+@Composable
 private fun HeroSection() {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        // Animated icon
-        val pulse by rememberInfiniteTransition(label = "hero").animateFloat(
-            initialValue = 1f, targetValue = 1.06f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1200, easing = EaseInOutCubic),
-                repeatMode = RepeatMode.Reverse
-            ), label = "pulse"
+    val infiniteTransition = rememberInfiniteTransition(label = "hero")
+
+    // Pulse animation
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ), label = "pulse"
+    )
+
+    // Slow rotation for gradient ring
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(8000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "rotation"
+    )
+
+    val primary = MaterialTheme.colorScheme.primary
+    val tertiary = MaterialTheme.colorScheme.tertiary
+    val secondary = MaterialTheme.colorScheme.secondary
+
+    Box(contentAlignment = Alignment.Center) {
+        // Gradient ring (behind icon)
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .scale(pulse * 1.05f)
+                .drawBehind {
+                    drawCircle(
+                        brush = Brush.sweepGradient(
+                            colors = listOf(
+                                primary,
+                                tertiary,
+                                secondary,
+                                primary
+                            ),
+                        ),
+                        radius = size.minDimension / 2f,
+                        alpha = 0.6f,
+                    )
+                }
         )
 
+        // Main icon circle
         Box(
             modifier = Modifier
                 .size(72.dp)
@@ -190,24 +226,24 @@ private fun HeroSection() {
                 tint = Color.White
             )
         }
-
-        Spacer(Modifier.height(16.dp))
-
-        Text(
-            "Welcome to AI Debate",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-
-        Text(
-            "Challenge AI or watch two AIs debate each other",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-            modifier = Modifier.padding(top = 4.dp)
-        )
     }
+
+    Spacer(Modifier.height(Spacing.lg))
+
+    Text(
+        "Welcome to AI Debate",
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center
+    )
+
+    Text(
+        "Challenge AI or watch two AIs debate each other",
+        style = MaterialTheme.typography.bodyMedium,
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+        modifier = Modifier.padding(top = Spacing.xs)
+    )
 }
 
 @Composable
@@ -237,17 +273,16 @@ private fun StaggeredCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 5.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = Radii.mediumShape,
             colors = CardDefaults.cardColors(containerColor = containerColor),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(Spacing.lg),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Icon in a small circle with accent background
                 Box(
                     modifier = Modifier
                         .size(44.dp)

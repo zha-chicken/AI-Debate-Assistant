@@ -4,6 +4,8 @@ package com.aidebate.presentation.rebuttal
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -16,14 +18,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.aidebate.presentation.theme.SuccessGreen
-import com.aidebate.presentation.theme.WarningAmber
+import com.aidebate.presentation.common.RolePill
+import com.aidebate.presentation.theme.*
 
 @Composable
 fun RebuttalTrainerScreen(
@@ -48,314 +53,306 @@ fun RebuttalTrainerScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            AnimatedContent(
-                targetState = uiState.phase,
-                transitionSpec = {
-                    (fadeIn(tween(300)) + slideInHorizontally(tween(400)) { it / 4 })
-                        .togetherWith(fadeOut(tween(200)) + slideOutHorizontally(tween(300)) { -it / 4 })
-                },
-                label = "phase"
-            ) { phase ->
-                when (phase) {
-                    TrainerPhase.TOPIC_SELECT -> TopicSelectPhase(uiState, viewModel)
-                    TrainerPhase.SETUP -> SetupPhase(uiState, viewModel)
-                    TrainerPhase.READY -> ReadyPhase(uiState, viewModel)
-                    TrainerPhase.RESPONDING -> RespondingPhase(uiState, viewModel)
-                    TrainerPhase.SCORING -> ScoringPhase()
-                    TrainerPhase.RESULT -> ResultPhase(uiState, viewModel)
-                }
+            when (uiState.phase) {
+                TrainerPhase.TOPIC_SELECT -> TopicSelectPhase(uiState, viewModel)
+                TrainerPhase.SETUP -> SetupPhase(uiState, viewModel)
+                TrainerPhase.READY -> ReadyPhase(uiState, viewModel)
+                TrainerPhase.RESPONDING -> RespondingPhase(uiState, viewModel)
+                TrainerPhase.SCORING -> ScoringPhase()
+                TrainerPhase.RESULT -> ResultPhase(uiState, viewModel)
             }
 
-            // Loading overlay (only for argument generation, scoring uses its own phase)
-            AnimatedVisibility(
-                visible = uiState.isGenerating,
-                enter = fadeIn(tween(200)),
-                exit = fadeOut(tween(300))
-            ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Card(shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(4.dp)) {
-                        Row(Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(Modifier.size(24.dp))
-                            Spacer(Modifier.width(16.dp))
-                            Text("Generating argument...",
-                                style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-            }
-
-            // Error
-            AnimatedVisibility(
-                visible = uiState.error != null,
-                enter = fadeIn() + slideInVertically { it },
-                exit = fadeOut() + slideOutVertically { it },
-                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
-            ) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(uiState.error ?: "", Modifier.weight(1f),
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            style = MaterialTheme.typography.bodySmall)
-                        IconButton(onClick = { viewModel.clearError() }) {
-                            Icon(Icons.Default.Close, "Dismiss")
-                        }
-                    }
-                }
+            if (uiState.error != null) {
+                ErrorBanner(uiState.error!!) { viewModel.clearError() }
             }
         }
     }
 }
 
+// ============================================================
+// TOPIC SELECT
+// ============================================================
+
 @Composable
-private fun TopicSelectPhase(state: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState())
-    ) {
+private fun TopicSelectPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.lg)) {
         Text("Select a Topic", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(4.dp))
-        Text("Choose a debate topic to practice rebuttals",
+        Spacer(Modifier.height(Spacing.sm))
+        Text("Choose a debate topic to practice your rebuttal skills.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Spacing.lg))
 
-        state.topics.forEach { topic ->
+        uiState.topics.forEach { topic ->
             Card(
                 onClick = { viewModel.selectTopic(topic.id, topic.title) },
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                shape = RoundedCornerShape(12.dp)
+                shape = Radii.mediumShape,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
             ) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Topic, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(topic.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                        if (topic.category.isNotBlank())
-                            Text(topic.category, style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                    }
-                    Icon(Icons.Filled.ChevronRight, null,
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
-                }
-            }
-        }
-
-        if (state.topics.isEmpty()) {
-            Text("No topics available. Create a topic first.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                modifier = Modifier.padding(top = 40.dp).fillMaxWidth(),
-                textAlign = TextAlign.Center)
-        }
-
-        if (state.sessions.isNotEmpty()) {
-            Spacer(Modifier.height(24.dp))
-            Text("Past Sessions", style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-            Spacer(Modifier.height(8.dp))
-            state.sessions.take(5).forEach { session ->
-                Card(
-                    onClick = { viewModel.selectSession(session.id) },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                Row(
+                    Modifier.padding(Spacing.lg),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.History, null, Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
-                        Spacer(Modifier.width(8.dp))
-                        Text(session.topicTitle, style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f))
-                        Text(session.userSide, style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (session.userSide == "FOR") SuccessGreen else MaterialTheme.colorScheme.error)
+                    Icon(Icons.Filled.Topic, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(Spacing.md))
+                    Column(Modifier.weight(1f)) {
+                        Text(topic.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        if (topic.description.isNotBlank()) {
+                            Text(topic.description, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                        }
                     }
+                    Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
                 }
             }
         }
     }
 }
 
+// ============================================================
+// SETUP
+// ============================================================
+
 @Composable
-private fun SetupPhase(state: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState())
-    ) {
-        Text("Session Setup", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(4.dp))
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text("Topic: ${state.selectedTopicTitle}",
-                Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer)
-        }
-        Spacer(Modifier.height(24.dp))
-
-        // Side
-        SectionHeader("Your Side")
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SideChip("FOR", state.userSide == "FOR") { viewModel.setSide("FOR") }
-            SideChip("AGAINST", state.userSide == "AGAINST") { viewModel.setSide("AGAINST") }
+private fun SetupPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.lg)) {
+        if (uiState.selectedTopicTitle.isNotBlank()) {
+            Card(
+                shape = Radii.mediumShape,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                )
+            ) {
+                Row(Modifier.padding(Spacing.lg)) {
+                    Icon(Icons.Filled.Topic, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(Spacing.md))
+                    Text(uiState.selectedTopicTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(Modifier.height(Spacing.lg))
         }
 
-        Spacer(Modifier.height(20.dp))
+        SectionHeader("Your Position")
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            RolePill(
+                selected = uiState.userSide == "FOR",
+                onClick = { viewModel.setSide("FOR") },
+                role = DebateRole.PRO,
+                label = "For"
+            )
+            RolePill(
+                selected = uiState.userSide == "AGAINST",
+                onClick = { viewModel.setSide("AGAINST") },
+                role = DebateRole.CON,
+                label = "Against"
+            )
+        }
+
+        Spacer(Modifier.height(Spacing.lg))
         SectionHeader("Difficulty")
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            listOf("easy" to "Easy", "medium" to "Medium", "hard" to "Hard").forEach { (v, l) ->
-                FilterChip(selected = state.difficulty == v, onClick = { viewModel.setDifficulty(v) },
-                    label = { Text(l) })
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            listOf("easy", "medium", "hard").forEach { diff ->
+                FilterChip(
+                    selected = uiState.difficulty == diff,
+                    onClick = { viewModel.setDifficulty(diff) },
+                    label = { Text(diff.replaceFirstChar { it.uppercase() }) }
+                )
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Spacing.lg))
         SectionHeader("Time Limit")
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            listOf(30 to "30s", 60 to "60s", 90 to "90s").forEach { (s, l) ->
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            listOf(30 to "30s", 60 to "60s", 90 to "90s").forEach { (sec, label) ->
                 FilterChip(
-                    selected = state.timeLimitSec == s,
-                    onClick = { viewModel.setTimeLimit(s) },
-                    label = { Text(l) },
+                    selected = uiState.timeLimitSec == sec,
+                    onClick = { viewModel.setTimeLimit(sec) },
+                    label = { Text(label) },
                     leadingIcon = { Icon(Icons.Filled.Timer, null, Modifier.size(16.dp)) }
                 )
             }
         }
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(Spacing.xl))
         Button(
             onClick = { viewModel.startSession() },
             modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(12.dp)
+            shape = Radii.mediumShape,
+            enabled = uiState.selectedTopicId != null
         ) {
-            Icon(Icons.Filled.PlayArrow, null)
-            Spacer(Modifier.width(8.dp))
-            Text("Start Training")
+            if (uiState.isGenerating) {
+                CircularProgressIndicator(
+                    Modifier.size(20.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp
+                )
+                Spacer(Modifier.width(Spacing.sm))
+                Text("Generating Argument...")
+            } else {
+                Text("Start Training")
+            }
         }
     }
 }
 
+// ============================================================
+// READY
+// ============================================================
+
 @Composable
-private fun ReadyPhase(state: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState())
-    ) {
+private fun ReadyPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
+    Column(Modifier.fillMaxSize().padding(Spacing.lg).verticalScroll(rememberScrollState())) {
         Text("Your Argument", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text("Read and prepare. Start the timer when ready.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Spacing.lg))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-            shape = RoundedCornerShape(16.dp)
+            shape = Radii.largeShape
         ) {
-            Column(Modifier.padding(20.dp)) {
+            Column(Modifier.padding(Spacing.xl)) {
                 Text("THE ARGUMENT",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f))
-                Spacer(Modifier.height(8.dp))
-                Text(state.promptArgument,
+                Spacer(Modifier.height(Spacing.sm))
+                Text(uiState.promptArgument,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSecondaryContainer)
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AssistChip(onClick = {}, label = { Text("${state.timeLimitSec}s") },
+        Spacer(Modifier.height(Spacing.lg))
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            AssistChip(onClick = {}, label = { Text("${uiState.timeLimitSec}s") },
                 leadingIcon = { Icon(Icons.Filled.Timer, null, Modifier.size(16.dp)) })
-            AssistChip(onClick = {}, label = { Text(state.difficulty.replaceFirstChar { it.uppercase() }) },
+            AssistChip(onClick = {}, label = { Text(uiState.difficulty.replaceFirstChar { it.uppercase() }) },
                 leadingIcon = { Icon(Icons.Filled.Speed, null, Modifier.size(16.dp)) })
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(Spacing.xl))
         Button(
             onClick = { viewModel.startTimer() },
             modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(12.dp)
+            shape = Radii.mediumShape
         ) {
             Icon(Icons.Filled.Timer, null)
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Spacing.sm))
             Text("Start Timer & Write Rebuttal")
         }
     }
 }
 
+// ============================================================
+// RESPONDING — with circular timer progress
+// ============================================================
+
 @Composable
-private fun RespondingPhase(state: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
-    val urgency = state.timeRemainingSec <= 10
-    Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-        // Live timer
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = if (urgency) MaterialTheme.colorScheme.errorContainer
-                else MaterialTheme.colorScheme.primaryContainer
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Row(
-                Modifier.fillMaxWidth().padding(16.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+private fun RespondingPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
+    val urgency = uiState.timeRemainingSec <= 10
+    val totalTime = uiState.timeLimitSec.toFloat().coerceAtLeast(1f)
+    val progress = uiState.timeRemainingSec / totalTime
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val errorColor = MaterialTheme.colorScheme.error
+    val errorContainer = MaterialTheme.colorScheme.errorContainer
+    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+
+    val tensionAlpha by rememberInfiniteTransition(label = "tension").animateFloat(
+        0f, 0.03f,
+        infiniteRepeatable(tween(2000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "tensionAlpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (urgency) Modifier.background(errorColor.copy(alpha = tensionAlpha))
+                else Modifier
+            )
+    ) {
+        Column(Modifier.fillMaxSize().padding(Spacing.lg)) {
+            // Circular timer
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = if (urgency) errorContainer else primaryContainer
+                ),
+                shape = Radii.largeShape
             ) {
-                Icon(Icons.Filled.Timer, null,
-                    tint = if (urgency) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    formatTimer(state.timeRemainingSec),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (urgency) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    Modifier.fillMaxWidth().padding(Spacing.lg),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(56.dp)) {
+                        Canvas(modifier = Modifier.size(56.dp)) {
+                            val c = if (urgency) errorColor else primaryColor
+                            drawArc(color = c.copy(alpha = 0.2f), startAngle = -90f,
+                                sweepAngle = 360f, useCenter = false,
+                                style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round))
+                            drawArc(color = c, startAngle = -90f,
+                                sweepAngle = 360f * progress, useCenter = false,
+                                style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round))
+                        }
+                    }
+                    Spacer(Modifier.width(Spacing.md))
+                    Text(
+                        formatTimer(uiState.timeRemainingSec),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (urgency) errorColor else primaryColor
+                    )
+                }
             }
-        }
 
-        Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Spacing.md))
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text(state.promptArgument, Modifier.padding(12.dp),
-                style = MaterialTheme.typography.bodySmall, maxLines = 2)
-        }
+            // Prompt preview
+            Card(
+                colors = CardDefaults.cardColors(containerColor = surfaceVariant),
+                shape = Radii.smallShape
+            ) {
+                Text(uiState.promptArgument, Modifier.padding(Spacing.md),
+                    style = MaterialTheme.typography.bodySmall, maxLines = 2)
+            }
 
-        Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Spacing.md))
 
-        OutlinedTextField(
-            value = state.userResponse,
-            onValueChange = { viewModel.onResponseChanged(it) },
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            label = { Text("Write your rebuttal...") },
-            placeholder = { Text("Type your counter-argument here...") },
-            minLines = 5,
-            shape = RoundedCornerShape(12.dp)
-        )
+            // Response input
+            OutlinedTextField(
+                value = uiState.userResponse,
+                onValueChange = { viewModel.onResponseChanged(it) },
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                label = { Text("Write your rebuttal...") },
+                placeholder = { Text("Type your counter-argument here...") },
+                minLines = 5,
+                shape = Radii.mediumShape
+            )
 
-        Spacer(Modifier.height(12.dp))
-        Button(
-            onClick = { viewModel.submitRebuttal() },
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            enabled = state.userResponse.isNotBlank()
-        ) {
-            Icon(Icons.Filled.Send, null)
-            Spacer(Modifier.width(8.dp))
-            Text("Submit Rebuttal")
+            Spacer(Modifier.height(Spacing.md))
+            Button(
+                onClick = { viewModel.submitRebuttal() },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = Radii.mediumShape,
+                enabled = uiState.userResponse.isNotBlank()
+            ) {
+                Icon(Icons.Filled.Send, null)
+                Spacer(Modifier.width(Spacing.sm))
+                Text("Submit Rebuttal")
+            }
         }
     }
 }
+
+// ============================================================
+// SCORING
+// ============================================================
 
 @Composable
 private fun ScoringPhase() {
@@ -365,81 +362,97 @@ private fun ScoringPhase() {
         verticalArrangement = Arrangement.Center
     ) {
         CircularProgressIndicator(Modifier.size(32.dp))
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Spacing.lg))
         Text("Analyzing your rebuttal...", style = MaterialTheme.typography.bodyLarge)
     }
 }
 
-@Composable
-private fun ResultPhase(state: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
-    val attempt = state.currentAttempt ?: return
+// ============================================================
+// RESULT — with performance grade
+// ============================================================
 
-    // Animated score counter
+@Composable
+private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
+    val attempt = uiState.currentAttempt ?: return
+
     val displayScore by animateIntAsState(
         targetValue = attempt.totalScore,
         animationSpec = tween(800, easing = EaseOutCubic),
         label = "totalScore"
     )
 
+    val grade = when {
+        attempt.totalScore >= 90 -> "A"
+        attempt.totalScore >= 75 -> "B"
+        attempt.totalScore >= 50 -> "C"
+        else -> "D"
+    }
+    val gradeColor = when (grade) {
+        "A" -> SuccessGreen; "B" -> Tertiary; "C" -> WarningAmber
+        else -> MaterialTheme.colorScheme.error
+    }
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize().padding(Spacing.lg).verticalScroll(rememberScrollState())
     ) {
         Text("Score Card", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Spacing.xl))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            shape = RoundedCornerShape(20.dp)
+            shape = Radii.largeShape
         ) {
             Column(
-                Modifier.fillMaxWidth().padding(28.dp),
+                Modifier.fillMaxWidth().padding(Spacing.xxl),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("TOTAL SCORE", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f))
+                Spacer(Modifier.height(Spacing.sm))
                 Text("$displayScore / 100",
                     style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Spacer(Modifier.height(Spacing.sm))
+                Surface(shape = CircleShape, color = gradeColor.copy(alpha = 0.15f)) {
+                    Text(grade, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold, color = gradeColor)
+                }
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-
-        // Sub-scores
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Spacer(Modifier.height(Spacing.lg))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             AnimatedScoreChip("Logic", attempt.logicScore, Modifier.weight(1f))
             AnimatedScoreChip("Clarity", attempt.clarityScore, Modifier.weight(1f))
         }
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Spacer(Modifier.height(Spacing.sm))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             AnimatedScoreChip("Persuasion", attempt.persuasionScore, Modifier.weight(1f))
             AnimatedScoreChip("Evidence", attempt.evidenceScore, Modifier.weight(1f))
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Spacing.xl))
 
-        // Feedback
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-            shape = RoundedCornerShape(16.dp)
+            shape = Radii.largeShape
         ) {
-            Column(Modifier.padding(20.dp)) {
-                Text("Feedback", style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
+            Column(Modifier.padding(Spacing.xl)) {
+                Text("Feedback", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer)
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Spacing.sm))
                 Text(attempt.feedback, style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer)
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-
+        Spacer(Modifier.height(Spacing.sm))
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            shape = RoundedCornerShape(10.dp)
+            shape = Radii.mediumShape
         ) {
-            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Row(Modifier.fillMaxWidth().padding(Spacing.md), horizontalArrangement = Arrangement.SpaceEvenly) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Time taken", style = MaterialTheme.typography.labelSmall)
                     Text("${attempt.timeTakenMs / 1000}s", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -451,8 +464,8 @@ private fun ResultPhase(state: RebuttalTrainerUiState, viewModel: RebuttalTraine
             }
         }
 
-        Spacer(Modifier.height(20.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Spacer(Modifier.height(Spacing.xl))
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
             OutlinedButton(onClick = { viewModel.newRound() }, modifier = Modifier.weight(1f)) {
                 Text("New Round")
             }
@@ -463,6 +476,10 @@ private fun ResultPhase(state: RebuttalTrainerUiState, viewModel: RebuttalTraine
     }
 }
 
+// ============================================================
+// COMPONENTS
+// ============================================================
+
 @Composable
 private fun AnimatedScoreChip(label: String, score: Int, modifier: Modifier = Modifier) {
     val displayScore by animateIntAsState(
@@ -470,22 +487,14 @@ private fun AnimatedScoreChip(label: String, score: Int, modifier: Modifier = Mo
         animationSpec = tween(600, delayMillis = 400, easing = EaseOutCubic),
         label = "subScore"
     )
-
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(14.dp)
+        shape = Radii.mediumShape
     ) {
-        Column(
-            Modifier.fillMaxWidth().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Column(Modifier.fillMaxWidth().padding(Spacing.lg), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("$displayScore", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
-                color = when {
-                    score >= 20 -> SuccessGreen
-                    score >= 15 -> WarningAmber
-                    else -> MaterialTheme.colorScheme.error
-                })
+                color = when { score >= 20 -> SuccessGreen; score >= 15 -> WarningAmber; else -> MaterialTheme.colorScheme.error })
             Text(label, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
             Text("/25", style = MaterialTheme.typography.labelSmall,
@@ -495,29 +504,26 @@ private fun AnimatedScoreChip(label: String, score: Int, modifier: Modifier = Mo
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(Spacing.lg),
+        shape = Radii.mediumShape,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+    ) {
+        Row(Modifier.padding(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.width(Spacing.sm))
+            Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+            TextButton(onClick = onDismiss) { Text("Dismiss") }
+        }
+    }
 }
 
 @Composable
-private fun SideChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    val color = when (label) {
-        "FOR" -> SuccessGreen
-        else -> MaterialTheme.colorScheme.error
-    }
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = {
-            Text(label, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
-        },
-        leadingIcon = {
-            if (selected) Icon(
-                if (label == "FOR") Icons.Filled.ThumbUp else Icons.Filled.ThumbDown,
-                null, Modifier.size(16.dp), tint = color
-            )
-        }
-    )
+private fun SectionHeader(text: String) {
+    Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
 }
 
 private fun formatTimer(totalSeconds: Int): String {

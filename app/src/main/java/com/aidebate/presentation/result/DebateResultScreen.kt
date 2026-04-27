@@ -3,9 +3,14 @@
 package com.aidebate.presentation.result
 
 import android.content.Intent
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -13,12 +18,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aidebate.domain.model.DebateTurn
 import com.aidebate.domain.model.SpeakerRole
+import com.aidebate.presentation.common.GlowWrapper
+import com.aidebate.presentation.theme.*
 
 @Composable
 fun DebateResultScreen(
@@ -76,96 +89,274 @@ fun DebateResultScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
                 // Winner card
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(Icons.Default.EmojiEvents, null, Modifier.size(56.dp),
-                                tint = MaterialTheme.colorScheme.tertiary)
-                            Spacer(Modifier.height(12.dp))
-                            Text("Topic: ${uiState.topicTitle}",
-                                style = MaterialTheme.typography.titleMedium,
-                                textAlign = TextAlign.Center)
-                            Spacer(Modifier.height(8.dp))
-                            if (uiState.result?.winner != null) {
-                                Text("Winner",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f))
-                                Text(
-                                    uiState.result!!.winner!!.name.replace("AI_", ""),
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.tertiary
-                                )
-                                if (uiState.result!!.summary.isNotBlank()) {
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(uiState.result!!.summary,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        textAlign = TextAlign.Center)
-                                }
-                            } else {
-                                Text("No winner declared",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer)
-                            }
-                        }
+                item(key = "winner") {
+                    WinnerCard(
+                        topicTitle = uiState.topicTitle,
+                        winner = uiState.result?.winner,
+                        summary = uiState.result?.summary ?: ""
+                    )
+                }
+
+                // Timeline visualization
+                if (uiState.turns.isNotEmpty()) {
+                    item(key = "timeline") {
+                        TimelineSection(turns = uiState.turns)
                     }
                 }
 
                 // Transcript
-                item {
-                    Text("Transcript",
+                item(key = "transcriptHeader") {
+                    Text(
+                        "Transcript",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp))
+                        modifier = Modifier.padding(top = Spacing.sm)
+                    )
                 }
 
-                items(uiState.turns) { turn ->
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                turn.speakerRole.name,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(turn.content, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
+                items(uiState.turns, key = { it.id }) { turn ->
+                    TurnCard(turn = turn)
                 }
 
-                // Back to home button
-                item {
-                    Spacer(Modifier.height(8.dp))
+                // Back to home
+                item(key = "backHome") {
+                    Spacer(Modifier.height(Spacing.sm))
                     Button(
                         onClick = onBackToHome,
                         modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = Radii.mediumShape
                     ) {
                         Icon(Icons.Default.Home, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(Spacing.sm))
                         Text("Back to Home")
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun WinnerCard(
+    topicTitle: String,
+    winner: SpeakerRole?,
+    summary: String,
+) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    val winnerRole = winner?.toDebateRole()
+    val winnerTokens = winnerRole?.let { RoleTokenDefaults.forRole(it) }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(500)) + slideInVertically(tween(400))
+    ) {
+        GlowWrapper(
+            glowColor = winnerTokens?.color?.glow ?: MaterialTheme.colorScheme.tertiary,
+            shape = Radii.largeShape,
+            isActive = true,
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = Radii.largeShape,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(Spacing.xl),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(Modifier.height(Spacing.sm))
+
+                    Icon(
+                        Icons.Default.EmojiEvents, null,
+                        Modifier.size(56.dp),
+                        tint = winnerTokens?.color?.primary ?: MaterialTheme.colorScheme.tertiary
+                    )
+                    Spacer(Modifier.height(Spacing.md))
+
+                    Text(
+                        topicTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(Spacing.sm))
+
+                    if (winner != null) {
+                        Text(
+                            "Winner",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            winner.name.replace("AI_", ""),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = winnerTokens?.color?.primary ?: MaterialTheme.colorScheme.tertiary
+                        )
+                        if (summary.isNotBlank()) {
+                            Spacer(Modifier.height(Spacing.sm))
+                            Text(
+                                summary,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        Text(
+                            "No winner declared",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimelineSection(turns: List<DebateTurn>) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(400, delayMillis = 200))
+    ) {
+        Card(
+            shape = Radii.mediumShape,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            )
+        ) {
+            Column(modifier = Modifier.padding(Spacing.lg)) {
+                Text(
+                    "Key Moments",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = Spacing.md)
+                )
+
+                // Simple timeline visualization
+                turns.filterIndexed { index, _ -> index % 2 == 0 || index == turns.lastIndex }
+                    .take(5)
+                    .forEachIndexed { i, turn ->
+                        val role = turn.speakerRole.toDebateRole()
+                        val tokens = RoleTokenDefaults.forRole(role)
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Timeline dot
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(tokens.color.primary.copy(alpha = 0.6f))
+                            )
+                            Spacer(Modifier.width(Spacing.md))
+                            Text(
+                                tokens.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = tokens.color.primary,
+                                modifier = Modifier.width(32.dp)
+                            )
+                            Text(
+                                turn.content.take(60) + if (turn.content.length > 60) "…" else "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                maxLines = 1,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        if (i < minOf(turns.size - 1, 4)) {
+                            // Vertical connector line
+                            Box(
+                                modifier = Modifier
+                                    .width(10.dp)
+                                    .height(12.dp)
+                            )
+                        }
+                    }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TurnCard(turn: DebateTurn) {
+    val role = turn.speakerRole.toDebateRole()
+    val tokens = RoleTokenDefaults.forRole(role)
+
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(turn.id) { visible = true }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 3 }
+    ) {
+        Card(
+            shape = Radii.mediumShape,
+            colors = CardDefaults.cardColors(
+                containerColor = tokens.color.container.copy(alpha = 0.3f)
+            )
+        ) {
+            Column(modifier = Modifier.padding(Spacing.lg)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(tokens.color.primary.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            tokens.label.take(1),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = tokens.color.primary
+                        )
+                    }
+                    Spacer(Modifier.width(Spacing.sm))
+                    Text(
+                        tokens.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = tokens.color.primary
+                    )
+                    if (turn.phase != null) {
+                        Spacer(Modifier.width(Spacing.sm))
+                        Text(
+                            turn.phase.name.lowercase().replaceFirstChar { it.uppercase() },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        )
+                    }
+                }
+                Spacer(Modifier.height(Spacing.xs))
+                Text(turn.content, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+private fun SpeakerRole.toDebateRole() = when (this) {
+    SpeakerRole.AI_PROPOSITION -> DebateRole.PRO
+    SpeakerRole.AI_OPPOSITION -> DebateRole.CON
+    SpeakerRole.USER -> DebateRole.USER
+    SpeakerRole.MODERATOR -> DebateRole.MODERATOR
 }

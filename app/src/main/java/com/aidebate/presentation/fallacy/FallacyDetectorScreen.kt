@@ -24,13 +24,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.aidebate.domain.model.FallacyReference
 import com.aidebate.domain.model.FallacyResult
-import com.aidebate.presentation.theme.SuccessGreen
-import com.aidebate.presentation.theme.WarningAmber
+import com.aidebate.presentation.theme.*
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.delay
 
-val HighlightYellow = Color(0xFFFFF9C4)
-val HighlightText = Color(0xFF4A3800)
+private val HighlightYellow = Color(0xFFFFF9C4)
+private val HighlightText = Color(0xFF4A3800)
 
 @Composable
 fun FallacyDetectorScreen(
@@ -49,6 +48,7 @@ fun FallacyDetectorScreen(
                     }
                 },
                 actions = {
+                    // Reference guide toggle
                     IconButton(onClick = { viewModel.toggleReference() }) {
                         Icon(Icons.Filled.MenuBook, "Reference Guide")
                     }
@@ -56,14 +56,16 @@ fun FallacyDetectorScreen(
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(Modifier.fillMaxSize().padding(padding)) {
             AnimatedContent(
                 targetState = uiState.showReference,
                 transitionSpec = {
-                    (fadeIn(tween(300)) + slideInHorizontally(tween(400)) { it / 4 })
-                        .togetherWith(fadeOut(tween(200)) + slideOutHorizontally(tween(300)) { -it / 4 })
+                    if (targetState) slideInHorizontally { it } + fadeIn() togetherWith
+                        slideOutHorizontally { -it } + fadeOut()
+                    else slideInHorizontally { -it } + fadeIn() togetherWith
+                        slideOutHorizontally { it } + fadeOut()
                 },
-                label = "main"
+                label = "fallacyPanel"
             ) { showRef ->
                 if (showRef) {
                     ReferenceGuidePanel(
@@ -76,31 +78,13 @@ fun FallacyDetectorScreen(
                     MainContent(uiState, viewModel)
                 }
             }
-
-            // Error
-            AnimatedVisibility(
-                visible = uiState.error != null,
-                enter = fadeIn() + slideInVertically { it },
-                exit = fadeOut() + slideOutVertically { it },
-                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
-            ) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(uiState.error ?: "", Modifier.weight(1f),
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            style = MaterialTheme.typography.bodySmall)
-                        IconButton(onClick = { viewModel.clearError() }) {
-                            Icon(Icons.Default.Close, "Dismiss")
-                        }
-                    }
-                }
-            }
         }
     }
 }
+
+// ============================================================
+// MAIN CONTENT
+// ============================================================
 
 @Composable
 private fun MainContent(
@@ -108,15 +92,15 @@ private fun MainContent(
     viewModel: FallacyDetectorViewModel
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize().padding(Spacing.lg).verticalScroll(rememberScrollState())
     ) {
         Text("Detect Logical Fallacies",
             style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Spacing.xs))
         Text("Paste or type an argument to scan for logical fallacies using AI.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Spacing.xl))
 
         OutlinedTextField(
             value = uiState.inputText,
@@ -125,15 +109,15 @@ private fun MainContent(
             label = { Text("Argument text to analyze") },
             placeholder = { Text("Paste or type an argument here...") },
             minLines = 6,
-            shape = RoundedCornerShape(12.dp)
+            shape = Radii.mediumShape
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(Spacing.md))
 
         Button(
             onClick = { viewModel.analyze() },
             modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = Radii.mediumShape,
             enabled = uiState.inputText.isNotBlank() && !uiState.isAnalyzing
         ) {
             if (uiState.isAnalyzing) {
@@ -142,54 +126,34 @@ private fun MainContent(
                     color = MaterialTheme.colorScheme.onPrimary,
                     strokeWidth = 2.dp
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Spacing.sm))
                 Text("Analyzing...")
             } else {
                 Icon(Icons.Filled.Search, null)
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Spacing.sm))
                 Text("Analyze for Fallacies")
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(Spacing.xl))
 
         // Results section
         AnimatedVisibility(visible = uiState.hasAnalyzed, enter = fadeIn() + expandVertically()) {
             Column {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Results", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        if (uiState.results.isNotEmpty()) {
-                            Spacer(Modifier.width(8.dp))
-                            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                                Text(
-                                    " ${uiState.results.size} found ",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-                    TextButton(onClick = { viewModel.clearResult() }) {
-                        Icon(Icons.Filled.Clear, null, Modifier.size(16.dp))
-                        Text("Clear")
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
+                ResultsHeader(
+                    count = uiState.results.size,
+                    onClear = { viewModel.clearResult() }
+                )
+                Spacer(Modifier.height(Spacing.sm))
 
                 if (uiState.results.isEmpty()) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = Radii.mediumShape
                     ) {
-                        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().padding(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Filled.CheckCircle, null, tint = SuccessGreen)
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(Spacing.md))
                             Text("No logical fallacies detected!",
                                 style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                         }
@@ -197,15 +161,51 @@ private fun MainContent(
                 } else {
                     uiState.results.forEachIndexed { index, result ->
                         StaggeredResultCard(result = result, index = index, delayMs = index * 80L)
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(Spacing.sm))
                     }
                 }
             }
         }
 
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(Spacing.xxxl))
     }
 }
+
+// ============================================================
+// RESULTS HEADER
+// ============================================================
+
+@Composable
+private fun ResultsHeader(count: Int, onClear: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Results", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (count > 0) {
+                Spacer(Modifier.width(Spacing.sm))
+                Surface(shape = Radii.smallShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                    Text(
+                        " $count found ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp)
+                    )
+                }
+            }
+        }
+        TextButton(onClick = onClear) {
+            Icon(Icons.Filled.Clear, null, Modifier.size(16.dp))
+            Text("Clear")
+        }
+    }
+}
+
+// ============================================================
+// RESULT CARD — with severity indicator
+// ============================================================
 
 @Composable
 private fun StaggeredResultCard(result: FallacyResult, index: Int, delayMs: Long) {
@@ -215,17 +215,24 @@ private fun StaggeredResultCard(result: FallacyResult, index: Int, delayMs: Long
         visible = true
     }
 
+    val severity = computeSeverity(result.name)
+    val severityColor = when (severity) {
+        "High" -> MaterialTheme.colorScheme.error
+        "Medium" -> WarningAmber
+        else -> MaterialTheme.colorScheme.outline
+    }
+
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(tween(350)) + slideInHorizontally(tween(400, easing = EaseOutCubic)) { it / 3 }
     ) {
         Card(
-            shape = RoundedCornerShape(14.dp),
+            shape = Radii.mediumShape,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)
             )
         ) {
-            Column(Modifier.padding(16.dp)) {
+            Column(Modifier.padding(Spacing.lg)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = RoundedCornerShape(6.dp),
@@ -238,23 +245,36 @@ private fun StaggeredResultCard(result: FallacyResult, index: Int, delayMs: Long
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Spacing.sm))
                     Text(result.name,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.weight(1f))
+                    // Severity badge
+                    Surface(
+                        shape = Radii.smallShape,
+                        color = severityColor.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            severity,
+                            modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = severityColor
+                        )
+                    }
                 }
 
                 if (result.quotedText.isNotBlank()) {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(Spacing.md))
                     Surface(
                         color = HighlightYellow,
-                        shape = RoundedCornerShape(8.dp)
+                        shape = Radii.smallShape
                     ) {
                         Text(
                             "\"${result.quotedText}\"",
-                            modifier = Modifier.padding(10.dp),
+                            modifier = Modifier.padding(Spacing.md),
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             color = HighlightText
@@ -262,7 +282,7 @@ private fun StaggeredResultCard(result: FallacyResult, index: Int, delayMs: Long
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Spacing.sm))
                 Text(result.explanation,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.75f),
@@ -272,6 +292,25 @@ private fun StaggeredResultCard(result: FallacyResult, index: Int, delayMs: Long
     }
 }
 
+// ============================================================
+// SEVERITY COMPUTATION (rule-based, no model change needed)
+// ============================================================
+
+private val highSeverityFallacies = setOf(
+    "Ad Hominem", "Straw Man", "False Dichotomy", "Slippery Slope",
+    "Circular Reasoning", "Appeal to Emotion"
+)
+
+private fun computeSeverity(name: String): String = when {
+    name in highSeverityFallacies -> "High"
+    name.contains("Appeal") || name.contains("False") || name.contains("Hasty") -> "Medium"
+    else -> "Low"
+}
+
+// ============================================================
+// REFERENCE GUIDE PANEL
+// ============================================================
+
 @Composable
 private fun ReferenceGuidePanel(
     references: List<FallacyReference>,
@@ -279,7 +318,7 @@ private fun ReferenceGuidePanel(
     onSelect: (FallacyReference?) -> Unit,
     onClose: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(Spacing.lg)) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -292,7 +331,7 @@ private fun ReferenceGuidePanel(
         Text("${references.size} common logical fallacies",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(Spacing.md))
 
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             references.forEachIndexed { index, ref ->
@@ -301,59 +340,54 @@ private fun ReferenceGuidePanel(
                     delay(index * 30L)
                     visible = true
                 }
-                AnimatedVisibility(
-                    visible = visible,
-                    enter = fadeIn(tween(300)) + slideInVertically(tween(350)) { it / 2 }
-                ) {
+                AnimatedVisibility(visible = visible, enter = fadeIn(tween(200))) {
                     Card(
-                        onClick = { onSelect(if (selected == ref) null else ref) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        onClick = {
+                            if (selected?.name == ref.name) onSelect(null) else onSelect(ref)
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        shape = Radii.mediumShape,
                         colors = CardDefaults.cardColors(
-                            containerColor = if (selected == ref)
+                            containerColor = if (selected?.name == ref.name)
                                 MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surfaceVariant
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         )
                     ) {
-                        Column(Modifier.padding(14.dp)) {
+                        Column(Modifier.padding(Spacing.lg)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
-                                    Modifier.size(6.dp).clip(CircleShape)
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.primary)
                                 )
-                                Spacer(Modifier.width(8.dp))
-                                Text(ref.name,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.weight(1f))
+                                Spacer(Modifier.width(Spacing.sm))
+                                Text(ref.name, style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold)
+                                Spacer(Modifier.weight(1f))
                                 Icon(
-                                    if (selected == ref) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                                    null, Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                    if (selected?.name == ref.name) Icons.Filled.ExpandLess
+                                    else Icons.Filled.ExpandMore, null,
+                                    Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 )
                             }
-                            AnimatedVisibility(
-                                visible = selected == ref,
-                                enter = expandVertically(tween(300)) + fadeIn(tween(300)),
-                                exit = shrinkVertically(tween(200)) + fadeOut(tween(200))
-                            ) {
+                            AnimatedVisibility(visible = selected?.name == ref.name) {
                                 Column {
-                                    Spacer(Modifier.height(8.dp))
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(ref.description,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
-                                    Spacer(Modifier.height(8.dp))
+                                    Spacer(Modifier.height(Spacing.sm))
+                                    Text(ref.description, style = MaterialTheme.typography.bodySmall)
+                                    Spacer(Modifier.height(Spacing.sm))
                                     Surface(
-                                        color = MaterialTheme.colorScheme.surface,
-                                        shape = RoundedCornerShape(8.dp)
+                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                        shape = Radii.smallShape
                                     ) {
-                                        Text("Example: \"${ref.example}\"",
-                                            modifier = Modifier.padding(8.dp),
+                                        Text(
+                                            "\"${ref.example}\"",
+                                            modifier = Modifier.padding(Spacing.md),
                                             style = MaterialTheme.typography.bodySmall,
                                             fontStyle = FontStyle.Italic,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        )
                                     }
                                 }
                             }

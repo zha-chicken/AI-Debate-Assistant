@@ -3,6 +3,8 @@
 package com.aidebate.presentation.setup
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -21,6 +24,9 @@ import com.aidebate.domain.model.DebateFormat
 import com.aidebate.domain.model.DebateMode
 import com.aidebate.domain.model.ProviderConfig
 import com.aidebate.domain.model.SpeakerRole
+import com.aidebate.presentation.common.RolePill
+import com.aidebate.presentation.common.RoleSelectionCard
+import com.aidebate.presentation.theme.*
 
 @Composable
 fun DebateSetupScreen(
@@ -61,33 +67,15 @@ fun DebateSetupScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                    .padding(Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.lg)
             ) {
                 // Topic info
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "Topic",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                        Text(
-                            uiState.topicTitle,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                TopicCard(uiState.topicTitle)
 
                 // Debate Mode
-                Text("Debate Mode", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionLabel("Debate Mode")
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                     ModeCard(
                         title = "User vs AI",
                         icon = Icons.Default.Person,
@@ -105,8 +93,8 @@ fun DebateSetupScreen(
                 }
 
                 // Debate Format
-                Text("Format", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionLabel("Format")
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                     ModeCard(
                         title = "Structured",
                         subtitle = "Opening, Rebuttal, Closing",
@@ -125,34 +113,36 @@ fun DebateSetupScreen(
                     )
                 }
 
-                // User side (only for User vs AI)
+                // User position (only for User vs AI)
                 AnimatedVisibility(visible = uiState.selectedMode == DebateMode.USER_VS_AI) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            "Your Position",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            SideCard(
-                                title = "For",
-                                description = "Argue in favor",
-                                icon = Icons.Default.ThumbUp,
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                        SectionLabel("Your Position")
+                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                            RoleSelectionCard(
                                 selected = uiState.userSide == SpeakerRole.AI_PROPOSITION,
                                 onClick = { viewModel.onUserSideSelected(SpeakerRole.AI_PROPOSITION) },
-                                modifier = Modifier.weight(1f),
-                                color = MaterialTheme.colorScheme.tertiary
+                                role = com.aidebate.presentation.theme.DebateRole.PRO,
+                                label = "For",
+                                subtitle = "Argue in favor",
+                                modifier = Modifier.weight(1f)
                             )
-                            SideCard(
-                                title = "Against",
-                                description = "Argue against",
-                                icon = Icons.Default.ThumbDown,
+                            RoleSelectionCard(
                                 selected = uiState.userSide == SpeakerRole.AI_OPPOSITION,
                                 onClick = { viewModel.onUserSideSelected(SpeakerRole.AI_OPPOSITION) },
-                                modifier = Modifier.weight(1f),
-                                color = MaterialTheme.colorScheme.error
+                                role = com.aidebate.presentation.theme.DebateRole.CON,
+                                label = "Against",
+                                subtitle = "Argue against",
+                                modifier = Modifier.weight(1f)
                             )
                         }
+
+                        // Live preview panel (User vs AI)
+                        LivePreviewPanel(
+                            mode = "User vs AI",
+                            userSide = uiState.userSide,
+                            propositionProvider = uiState.providerProposition,
+                            oppositionProvider = uiState.providerOpposition,
+                        )
                     }
                 }
 
@@ -176,24 +166,142 @@ fun DebateSetupScreen(
                     onModelChanged = { viewModel.onModelChanged("opposition", it) }
                 )
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Spacing.sm))
 
                 // Start button
                 Button(
                     onClick = { viewModel.startDebate() },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     enabled = uiState.canStart,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = Radii.mediumShape
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Spacing.sm))
                     Text("Start Debate", style = MaterialTheme.typography.titleMedium)
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(Spacing.xl))
             }
         }
     }
+}
+
+@Composable
+private fun TopicCard(title: String) {
+    Card(
+        shape = Radii.mediumShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(Spacing.lg)) {
+            Text(
+                "Topic",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun LivePreviewPanel(
+    mode: String,
+    userSide: SpeakerRole?,
+    propositionProvider: AiProvider?,
+    oppositionProvider: AiProvider?,
+) {
+    Card(
+        shape = Radii.mediumShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Spacing.lg)
+        ) {
+            Text(
+                "Preview",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+            Spacer(Modifier.height(Spacing.md))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // User side
+                val userTokens = if (userSide == SpeakerRole.AI_PROPOSITION)
+                    RoleTokenDefaults.Pro else RoleTokenDefaults.Con
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(userTokens.color.container)
+                    ) {
+                        Icon(
+                            Icons.Default.Person, null,
+                            tint = userTokens.color.onContainer,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text("You", style = MaterialTheme.typography.labelSmall,
+                        color = userTokens.color.primary)
+                    if (userSide != null) {
+                        Text(userTokens.label, style = MaterialTheme.typography.labelSmall,
+                            color = userTokens.color.primary.copy(alpha = 0.6f))
+                    }
+                }
+
+                Text("vs", style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+
+                // AI side
+                val aiTokens = RoleTokenDefaults.Con
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(aiTokens.color.container)
+                    ) {
+                        Icon(
+                            Icons.Default.Adb, null,
+                            tint = aiTokens.color.onContainer,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text("AI", style = MaterialTheme.typography.labelSmall,
+                        color = aiTokens.color.primary)
+                    Text(
+                        oppositionProvider?.displayName ?: "AI",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = aiTokens.color.primary.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 }
 
 @Composable
@@ -208,7 +316,7 @@ private fun ModeCard(
     Card(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        shape = Radii.mediumShape,
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -219,7 +327,7 @@ private fun ModeCard(
         ) else null
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(Spacing.lg),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
@@ -227,7 +335,7 @@ private fun ModeCard(
                 tint = if (selected) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
             Text(
                 title,
                 style = MaterialTheme.typography.labelLarge,
@@ -247,38 +355,6 @@ private fun ModeCard(
 }
 
 @Composable
-private fun SideCard(
-    title: String,
-    description: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    color: androidx.compose.ui.graphics.Color
-) {
-    Card(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) color.copy(alpha = 0.15f)
-            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        border = if (selected) CardDefaults.outlinedCardBorder().copy(
-            width = 2.dp,
-            brush = androidx.compose.ui.graphics.SolidColor(color)
-        ) else null
-    ) {
-        Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, contentDescription = null, tint = if (selected) color else color.copy(alpha = 0.5f))
-            Spacer(Modifier.height(8.dp))
-            Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            Text(description, style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-@Composable
 private fun ProviderSelector(
     label: String,
     providers: List<ProviderConfig>,
@@ -290,20 +366,19 @@ private fun ProviderSelector(
     var expanded by remember { mutableStateOf(false) }
 
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = Radii.mediumShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.lg)) {
             Text(
                 label,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
 
-            // Provider dropdown
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
                 OutlinedTextField(
                     value = selectedProvider?.displayName ?: "Select provider",
@@ -311,7 +386,7 @@ private fun ProviderSelector(
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = Radii.smallShape
                 )
                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     providers.forEach { config ->
@@ -332,9 +407,8 @@ private fun ProviderSelector(
                 }
             }
 
-            // Model input
             if (selectedProvider != null) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Spacing.sm))
                 OutlinedTextField(
                     value = selectedModel,
                     onValueChange = onModelChanged,
@@ -342,7 +416,7 @@ private fun ProviderSelector(
                     placeholder = { Text(selectedProvider.defaultBaseUrl) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    shape = RoundedCornerShape(8.dp)
+                    shape = Radii.smallShape
                 )
             }
         }
