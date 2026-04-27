@@ -1,9 +1,11 @@
 # AI Debate
-
+made particularly for those struggling to debate —— including me
+ 
 An Android app for structured, AI-powered debates. Challenge an AI opponent or sit back and watch two AIs debate each other. Built with Jetpack Compose and Material 3.
 
-## Features
+!!! IMPORTANT NOTICE - DON'T USE IT TO CHEAT, USE IT TO PREPARE WISELY!!!
 
+## Features
 ### Debate Modes
 - **User vs AI** — Take a position and debate against an AI opponent
 - **AI vs AI** — Watch two AI models debate in real-time
