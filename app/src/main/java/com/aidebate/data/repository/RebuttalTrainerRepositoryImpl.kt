@@ -171,9 +171,14 @@ class RebuttalTrainerRepositoryImpl @Inject constructor(
         val cleanedJson = json.trim()
             .removePrefix("```json").removePrefix("```")
             .removeSuffix("```").trim()
+        val sanitized = sanitizeJson(cleanedJson)
         val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
         val mapType = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
-        val map = moshi.adapter<Map<String, Any>>(mapType).fromJson(cleanedJson) ?: emptyMap()
+        val map = try {
+            moshi.adapter<Map<String, Any>>(mapType).lenient().fromJson(sanitized)
+        } catch (_: Exception) {
+            emptyMap()
+        } ?: emptyMap()
         return RebuttalAttempt(
             sessionId = sessionId,
             promptArgument = "",
@@ -191,9 +196,14 @@ class RebuttalTrainerRepositoryImpl @Inject constructor(
         val cleanedJson = json.trim()
             .removePrefix("```json").removePrefix("```")
             .removeSuffix("```").trim()
+        val sanitized = sanitizeJson(cleanedJson)
         val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
         val mapType = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
-        val map = moshi.adapter<Map<String, Any>>(mapType).fromJson(cleanedJson) ?: emptyMap()
+        val map = try {
+            moshi.adapter<Map<String, Any>>(mapType).lenient().fromJson(sanitized)
+        } catch (_: Exception) {
+            emptyMap()
+        } ?: emptyMap()
 
         val rawBreakdown = (map["breakdown"] as? List<Map<String, Any>>) ?: emptyList()
         val breakdown = rawBreakdown.map { b ->
@@ -216,9 +226,14 @@ class RebuttalTrainerRepositoryImpl @Inject constructor(
         val cleanedJson = json.trim()
             .removePrefix("```json").removePrefix("```")
             .removeSuffix("```").trim()
+        val sanitized = sanitizeJson(cleanedJson)
         val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
         val listType = Types.newParameterizedType(List::class.java, Map::class.java)
-        val parsed = moshi.adapter<List<Map<String, Any>>>(listType).fromJson(cleanedJson) ?: return emptyList()
+        val parsed = try {
+            moshi.adapter<List<Map<String, Any>>>(listType).lenient().fromJson(sanitized)
+        } catch (_: Exception) {
+            null
+        } ?: return emptyList()
         return parsed.map { map ->
             FallacyResult(
                 name = map["name"]?.toString() ?: "Unknown",
@@ -227,6 +242,33 @@ class RebuttalTrainerRepositoryImpl @Inject constructor(
             )
         }
     }
+}
+
+/**
+ * Escapes unescaped control characters in JSON string values.
+ * AI-generated JSON often contains literal newlines/tabs inside strings.
+ */
+private fun sanitizeJson(json: String): String {
+    val result = StringBuilder(json.length)
+    var i = 0
+    while (i < json.length) {
+        val c = json[i]
+        if (c == '\\' && i + 1 < json.length) {
+            result.append(c)
+            i++
+            result.append(json[i])
+        } else if (c == '\n') {
+            result.append("\\n")
+        } else if (c == '\r') {
+            result.append("\\r")
+        } else if (c == '\t') {
+            result.append("\\t")
+        } else {
+            result.append(c)
+        }
+        i++
+    }
+    return result.toString()
 }
 
 private fun RebuttalSession.toEntity() = RebuttalSessionEntity(
