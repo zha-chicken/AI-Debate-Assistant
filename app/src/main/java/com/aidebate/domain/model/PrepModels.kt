@@ -62,3 +62,22 @@ data class FallacyReference(
     val description: String,
     val example: String
 )
+
+data class ScoreBreakdown(
+    val category: String,      // "Logic", "Clarity", "Persuasion", "Evidence"
+    val score: Int,            // out of 25
+    val strength: String,      // what the user did well
+    val weakness: String,      // what could be improved
+    val suggestion: String     // specific advice for next time
+)
+
+data class RebuttalExplanation(
+    val breakdown: List<ScoreBreakdown>,
+    val overallAdvice: String,
+    val keyTakeaway: String
+)
+
+data class RebuttalChatMessage(
+    val role: String,          // "user" or "ai"
+    val content: String
+)

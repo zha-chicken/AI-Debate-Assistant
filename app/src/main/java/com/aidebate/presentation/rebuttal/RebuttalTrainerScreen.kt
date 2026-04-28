@@ -29,13 +29,21 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.presentation.common.RolePill
 import com.aidebate.presentation.theme.*
+import com.aidebate.domain.model.RebuttalChatMessage
+import com.aidebate.domain.model.RebuttalExplanation
+import com.aidebate.domain.model.ScoreBreakdown
 
 @Composable
 fun RebuttalTrainerScreen(
+    sessionId: String = "",
     onBack: () -> Unit,
     viewModel: RebuttalTrainerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(sessionId) {
+        if (sessionId.isNotBlank()) viewModel.loadSession(sessionId)
+    }
 
     Scaffold(
         topBar = {
@@ -447,7 +455,109 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
             }
         }
 
+        // ———— EXPLAIN SCORE SECTION ————
+
+        if (uiState.explanation == null) {
+            Spacer(Modifier.height(Spacing.md))
+            Button(
+                onClick = { viewModel.requestExplanation() },
+                modifier = Modifier.fillMaxWidth().height(44.dp),
+                shape = Radii.mediumShape,
+                enabled = !uiState.isExplaining
+            ) {
+                if (uiState.isExplaining) {
+                    CircularProgressIndicator(Modifier.size(18.dp),
+                        color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                    Spacer(Modifier.width(Spacing.sm))
+                    Text("Getting detailed breakdown...")
+                } else {
+                    Icon(Icons.Default.Info, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(Spacing.sm))
+                    Text("Explain Score")
+                }
+            }
+        } else {
+            // Per-category breakdown
+            Spacer(Modifier.height(Spacing.lg))
+            Text("Detailed Breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(Spacing.sm))
+
+            uiState.explanation!!.breakdown.forEach { breakdown ->
+                BreakdownCard(breakdown)
+                Spacer(Modifier.height(Spacing.sm))
+            }
+
+            // Overall advice
+            if (uiState.explanation!!.overallAdvice.isNotBlank()) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                    shape = Radii.mediumShape
+                ) {
+                    Column(Modifier.padding(Spacing.lg)) {
+                        Text("Overall Advice", fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer)
+                        Spacer(Modifier.height(Spacing.xs))
+                        Text(uiState.explanation!!.overallAdvice,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    }
+                }
+                Spacer(Modifier.height(Spacing.sm))
+            }
+
+            // Key takeaway
+            if (uiState.explanation!!.keyTakeaway.isNotBlank()) {
+                Card(
+                    shape = Radii.mediumShape,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Row(Modifier.padding(Spacing.lg), verticalAlignment = Alignment.Top) {
+                        Icon(Icons.Filled.Lightbulb, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(Spacing.sm))
+                        Text(uiState.explanation!!.keyTakeaway,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                }
+                Spacer(Modifier.height(Spacing.lg))
+            }
+
+            // ———— CHAT SECTION ————
+            Text("Ask About This Score", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(Spacing.sm))
+
+            uiState.chatMessages.forEach { msg ->
+                ChatBubble(msg)
+                Spacer(Modifier.height(Spacing.xs))
+            }
+
+            // Chat input
+            Spacer(Modifier.height(Spacing.sm))
+            Row(verticalAlignment = Alignment.Bottom) {
+                OutlinedTextField(
+                    value = uiState.chatInput,
+                    onValueChange = { viewModel.onChatInputChanged(it) },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Ask about your score...") },
+                    shape = RoundedCornerShape(20.dp),
+                    singleLine = true
+                )
+                Spacer(Modifier.width(Spacing.sm))
+                FilledIconButton(
+                    onClick = { viewModel.sendChatMessage() },
+                    enabled = uiState.chatInput.isNotBlank(),
+                    modifier = Modifier.size(44.dp),
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Send, "Send")
+                }
+            }
+        }
+
         Spacer(Modifier.height(Spacing.sm))
+
+        // Time info card
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             shape = Radii.mediumShape
@@ -524,6 +634,89 @@ private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
 @Composable
 private fun SectionHeader(text: String) {
     Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+}
+
+// ============================================================
+// BREAKDOWN CARD — per-category explanation
+// ============================================================
+
+@Composable
+private fun BreakdownCard(breakdown: ScoreBreakdown) {
+    val color = when {
+        breakdown.score >= 20 -> SuccessGreen
+        breakdown.score >= 15 -> WarningAmber
+        else -> MaterialTheme.colorScheme.error
+    }
+    Card(
+        shape = Radii.mediumShape,
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.06f)
+        )
+    ) {
+        Column(Modifier.padding(Spacing.lg)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(breakdown.category,
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(Spacing.sm))
+                Text("${breakdown.score}/25",
+                    style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold,
+                    color = color)
+            }
+            Spacer(Modifier.height(4.dp))
+            if (breakdown.strength.isNotBlank()) {
+                Text("✓ ${breakdown.strength}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+            }
+            if (breakdown.weakness.isNotBlank()) {
+                Text("△ ${breakdown.weakness}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            }
+            if (breakdown.suggestion.isNotBlank()) {
+                Spacer(Modifier.height(2.dp))
+                Surface(
+                    shape = Radii.smallShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Text(breakdown.suggestion,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
+                }
+            }
+        }
+    }
+}
+
+// ============================================================
+// CHAT BUBBLE
+// ============================================================
+
+@Composable
+private fun ChatBubble(msg: RebuttalChatMessage) {
+    val isUser = msg.role == "user"
+    val bgColor = if (isUser) MaterialTheme.colorScheme.primaryContainer
+    else MaterialTheme.colorScheme.surfaceVariant
+    val alignment = if (isUser) Arrangement.End else Arrangement.Start
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = alignment
+    ) {
+        Surface(
+            shape = RoundedCornerShape(
+                topStart = 12.dp, topEnd = 12.dp,
+                bottomStart = if (isUser) 12.dp else 4.dp,
+                bottomEnd = if (isUser) 4.dp else 12.dp
+            ),
+            color = bgColor
+        ) {
+            Text(msg.content,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                style = MaterialTheme.typography.bodyMedium)
+        }
+    }
 }
 
 private fun formatTimer(totalSeconds: Int): String {

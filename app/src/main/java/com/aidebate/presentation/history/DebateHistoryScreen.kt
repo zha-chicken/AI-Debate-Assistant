@@ -17,7 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.DebateMode
-import com.aidebate.domain.model.DebateSessionSummary
+import com.aidebate.domain.model.HistoryItem
 import com.aidebate.domain.model.SessionStatus
 import com.aidebate.presentation.theme.*
 import java.text.SimpleDateFormat
@@ -26,7 +26,8 @@ import java.util.Locale
 
 @Composable
 fun DebateHistoryScreen(
-    onSessionSelected: (String) -> Unit,
+    onDebateSelected: (String) -> Unit,
+    onRebuttalSelected: (String) -> Unit,
     onBack: () -> Unit,
     viewModel: DebateHistoryViewModel = hiltViewModel()
 ) {
@@ -37,7 +38,7 @@ fun DebateHistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Debate History") },
+                title = { Text("History") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, "Back")
@@ -59,12 +60,12 @@ fun DebateHistoryScreen(
                     )
                     Spacer(Modifier.height(Spacing.lg))
                     Text(
-                        "No debates yet",
+                        "No activity yet",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                     Text(
-                        "Start a new debate to see it here",
+                        "Start a debate or try the rebuttal trainer",
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
@@ -79,12 +80,18 @@ fun DebateHistoryScreen(
                 contentPadding = PaddingValues(Spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
-                items(uiState.sessions, key = { it.id }) { session ->
-                    HistoryCard(
-                        session = session,
-                        onClick = { onSessionSelected(session.id) },
-                        onDelete = { viewModel.deleteSession(session.id) }
-                    )
+                items(uiState.items, key = { it.id }) { item ->
+                    when (item) {
+                        is HistoryItem.Debate -> DebateHistoryCard(
+                            item = item,
+                            onClick = { onDebateSelected(item.id) },
+                            onDelete = { viewModel.deleteSession(item.id) }
+                        )
+                        is HistoryItem.Rebuttal -> RebuttalHistoryCard(
+                            item = item,
+                            onClick = { onRebuttalSelected(item.id) }
+                        )
+                    }
                 }
             }
         }
@@ -92,12 +99,13 @@ fun DebateHistoryScreen(
 }
 
 @Composable
-private fun HistoryCard(
-    session: DebateSessionSummary,
+private fun DebateHistoryCard(
+    item: HistoryItem.Debate,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
     var showDelete by remember { mutableStateOf(false) }
+    val summary = item.summary
 
     Card(
         onClick = onClick,
@@ -112,51 +120,60 @@ private fun HistoryCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
+                Surface(
+                    shape = Radii.smallShape,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        "Debate",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+                Spacer(Modifier.height(Spacing.xs))
                 Text(
-                    session.topicTitle,
+                    summary.topicTitle,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2
                 )
                 Spacer(Modifier.height(Spacing.xs))
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    // Mode badge
-                    Surface(
-                        shape = Radii.smallShape,
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Text(
-                            if (session.mode == DebateMode.USER_VS_AI) "User vs AI" else "AI vs AI",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                    // Turn count badge
                     Surface(
                         shape = Radii.smallShape,
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                     ) {
                         Text(
-                            "${session.turnCount} turns",
+                            if (summary.mode == DebateMode.USER_VS_AI) "User vs AI" else "AI vs AI",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
-                    // Status badge
-                    if (session.status != SessionStatus.ACTIVE) {
+                    Surface(
+                        shape = Radii.smallShape,
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                    ) {
+                        Text(
+                            "${summary.turnCount} turns",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                    if (summary.status != SessionStatus.ACTIVE) {
                         Surface(
                             shape = Radii.smallShape,
-                            color = when (session.status) {
+                            color = when (summary.status) {
                                 SessionStatus.COMPLETED -> MaterialTheme.colorScheme.tertiaryContainer
                                 else -> MaterialTheme.colorScheme.errorContainer
                             }
                         ) {
                             Text(
-                                session.status.name.lowercase().replaceFirstChar { it.uppercase() },
+                                summary.status.name.lowercase().replaceFirstChar { it.uppercase() },
                                 style = MaterialTheme.typography.labelSmall,
-                                color = when (session.status) {
+                                color = when (summary.status) {
                                     SessionStatus.COMPLETED -> MaterialTheme.colorScheme.onTertiaryContainer
                                     else -> MaterialTheme.colorScheme.onErrorContainer
                                 },
@@ -166,7 +183,7 @@ private fun HistoryCard(
                     }
                 }
                 Text(
-                    formatDate(session.createdAt),
+                    formatDate(summary.createdAt),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                     modifier = Modifier.padding(top = Spacing.xs)
@@ -195,6 +212,97 @@ private fun HistoryCard(
                 TextButton(onClick = { showDelete = false }) { Text("Cancel") }
             }
         )
+    }
+}
+
+@Composable
+private fun RebuttalHistoryCard(
+    item: HistoryItem.Rebuttal,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = Radii.mediumShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Surface(
+                    shape = Radii.smallShape,
+                    color = MaterialTheme.colorScheme.tertiaryContainer
+                ) {
+                    Text(
+                        "Rebuttal Practice",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+                Spacer(Modifier.height(Spacing.xs))
+                Text(
+                    item.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2
+                )
+                Spacer(Modifier.height(Spacing.xs))
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    Surface(
+                        shape = Radii.smallShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Text(
+                            item.session.difficulty.replaceFirstChar { it.uppercase() },
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                    if (item.bestScore != null) {
+                        val scoreColor = when {
+                            item.bestScore >= 75 -> SuccessGreen
+                            item.bestScore >= 50 -> WarningAmber
+                            else -> MaterialTheme.colorScheme.error
+                        }
+                        Surface(
+                            shape = Radii.smallShape,
+                            color = scoreColor.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                "Best: ${item.bestScore}/100",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = scoreColor,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    if (item.attemptCount > 0) {
+                        Text(
+                            "${item.attemptCount} attempt${if (item.attemptCount > 1) "s" else ""}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+                Text(
+                    formatDate(item.createdAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    modifier = Modifier.padding(top = Spacing.xs)
+                )
+            }
+
+            Icon(
+                Icons.Default.ChevronRight, null,
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+            )
+        }
     }
 }
 

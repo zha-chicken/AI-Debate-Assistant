@@ -42,7 +42,10 @@ sealed class Screen(val route: String) {
     data object ArgumentMap : Screen("argument_map/{topicId}") {
         fun createRoute(topicId: String) = "argument_map/$topicId"
     }
-    data object RebuttalTrainer : Screen("rebuttal_trainer")
+    data object RebuttalTrainer : Screen("rebuttal_trainer?sessionId={sessionId}") {
+        fun createRoute(sessionId: String) = "rebuttal_trainer?sessionId=$sessionId"
+        fun createRoute() = "rebuttal_trainer"
+    }
     data object FallacyDetector : Screen("fallacy_detector")
 }
 
@@ -136,8 +139,11 @@ fun AppNavHost(
 
         composable(Screen.History.route) {
             DebateHistoryScreen(
-                onSessionSelected = { sessionId ->
+                onDebateSelected = { sessionId ->
                     navController.navigate(Screen.Debate.createRoute(sessionId))
+                },
+                onRebuttalSelected = { sessionId ->
+                    navController.navigate(Screen.RebuttalTrainer.createRoute(sessionId))
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -174,8 +180,18 @@ fun AppNavHost(
             )
         }
 
-        composable(Screen.RebuttalTrainer.route) {
+        composable(
+            route = Screen.RebuttalTrainer.route,
+            arguments = listOf(
+                navArgument("sessionId") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            )
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
             RebuttalTrainerScreen(
+                sessionId = sessionId,
                 onBack = { navController.popBackStack() }
             )
         }

@@ -103,3 +103,24 @@ data class DebateSessionSummary(
     val turnCount: Int,
     val createdAt: Long
 )
+
+sealed interface HistoryItem {
+    val id: String
+    val title: String
+    val createdAt: Long
+    val typeLabel: String
+
+    data class Debate(val summary: DebateSessionSummary) : HistoryItem {
+        override val id get() = summary.id
+        override val title get() = summary.topicTitle
+        override val createdAt get() = summary.createdAt
+        override val typeLabel get() = "Debate"
+    }
+
+    data class Rebuttal(val session: RebuttalSession, val bestScore: Int?, val attemptCount: Int) : HistoryItem {
+        override val id get() = session.id
+        override val title get() = session.topicTitle
+        override val createdAt get() = session.createdAt
+        override val typeLabel get() = "Rebuttal"
+    }
+}

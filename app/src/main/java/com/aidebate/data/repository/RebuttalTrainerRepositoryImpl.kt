@@ -95,6 +95,55 @@ class RebuttalTrainerRepositoryImpl @Inject constructor(
         return parseScoreResult(sessionId, result.content)
     }
 
+    suspend fun generateExplanation(
+        topicTitle: String,
+        promptArgument: String,
+        userResponse: String,
+        attempt: RebuttalAttempt
+    ): RebuttalExplanation {
+        val (adapter, config) = getAdapter()
+        val prompt = buildString {
+            append("You are a debate coach. Provide a detailed breakdown of this rebuttal attempt.\n\n")
+            append("Topic: \"$topicTitle\"\n")
+            append("Original argument: \"$promptArgument\"\n")
+            append("User's rebuttal: \"$userResponse\"\n")
+            append("Scores: Logic=${attempt.logicScore}/25, Clarity=${attempt.clarityScore}/25, ")
+            append("Persuasion=${attempt.persuasionScore}/25, Evidence=${attempt.evidenceScore}/25\n\n")
+            append("Return ONLY valid JSON with this structure:\n")
+            append("""{"breakdown": [{"category": "Logic", "score": ${attempt.logicScore}, "strength": "what they did well", "weakness": "what could improve", "suggestion": "specific advice"}, ...], "overallAdvice": "2-3 sentence summary", "keyTakeaway": "one key takeaway"}""")
+        }
+        val result = adapter.chat(
+            systemPrompt = "You are a detailed debate coach. Always return valid JSON.",
+            conversationHistory = listOf(ChatMessage("user", prompt)),
+            config = ChatConfig(model = config.modelName, temperature = 0.4),
+            providerConfig = config
+        )
+        return parseExplanationResult(result.content)
+    }
+
+    suspend fun chatAboutRebuttal(
+        topicTitle: String,
+        promptArgument: String,
+        userResponse: String,
+        attempt: RebuttalAttempt,
+        messages: List<RebuttalChatMessage>
+    ): RebuttalChatMessage {
+        val (adapter, config) = getAdapter()
+        val history = buildList {
+            add(ChatMessage("system", "You are a helpful debate coach. The user just completed a rebuttal practice on \"$topicTitle\". Original argument: \"$promptArgument\". Their rebuttal: \"$userResponse\". Scores: Logic=${attempt.logicScore}/25, Clarity=${attempt.clarityScore}/25, Persuasion=${attempt.persuasionScore}/25, Evidence=${attempt.evidenceScore}/25. Answer their questions about their performance and help them improve."))
+            messages.forEach { msg ->
+                add(ChatMessage(if (msg.role == "ai") "assistant" else "user", msg.content))
+            }
+        }
+        val result = adapter.chat(
+            systemPrompt = "You are a helpful debate coach helping a user improve their rebuttal skills.",
+            conversationHistory = history.drop(1),
+            config = ChatConfig(model = config.modelName, temperature = 0.4),
+            providerConfig = config
+        )
+        return RebuttalChatMessage("ai", result.content)
+    }
+
     suspend fun analyzeFallacies(text: String): List<FallacyResult> {
         val (adapter, config) = getAdapter()
         val prompt = buildString {
@@ -135,6 +184,31 @@ class RebuttalTrainerRepositoryImpl @Inject constructor(
             evidenceScore = (map["evidenceScore"] as? Number)?.toInt() ?: 0,
             totalScore = (map["totalScore"] as? Number)?.toInt() ?: 0,
             feedback = map["feedback"]?.toString() ?: ""
+        )
+    }
+
+    private fun parseExplanationResult(json: String): RebuttalExplanation {
+        val cleanedJson = json.trim()
+            .removePrefix("```json").removePrefix("```")
+            .removeSuffix("```").trim()
+        val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+        val mapType = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
+        val map = moshi.adapter<Map<String, Any>>(mapType).fromJson(cleanedJson) ?: emptyMap()
+
+        val rawBreakdown = (map["breakdown"] as? List<Map<String, Any>>) ?: emptyList()
+        val breakdown = rawBreakdown.map { b ->
+            ScoreBreakdown(
+                category = b["category"]?.toString() ?: "",
+                score = (b["score"] as? Number)?.toInt() ?: 0,
+                strength = b["strength"]?.toString() ?: "",
+                weakness = b["weakness"]?.toString() ?: "",
+                suggestion = b["suggestion"]?.toString() ?: ""
+            )
+        }
+        return RebuttalExplanation(
+            breakdown = breakdown,
+            overallAdvice = map["overallAdvice"]?.toString() ?: "",
+            keyTakeaway = map["keyTakeaway"]?.toString() ?: ""
         )
     }
 

@@ -31,6 +31,11 @@ data class RebuttalTrainerUiState(
     val currentAttempt: RebuttalAttempt? = null,
     val attempts: List<RebuttalAttempt> = emptyList(),
     val sessions: List<RebuttalSession> = emptyList(),
+    val isExplaining: Boolean = false,
+    val explanation: RebuttalExplanation? = null,
+    val chatMessages: List<RebuttalChatMessage> = emptyList(),
+    val chatInput: String = "",
+    val reviewingSessionId: String? = null, // non-null when viewing history
     val error: String? = null
 )
 
@@ -152,8 +157,64 @@ class RebuttalTrainerViewModel @Inject constructor(
         }
     }
 
+    fun requestExplanation() {
+        val state = _uiState.value
+        val attempt = state.currentAttempt ?: return
+        if (state.promptArgument.isBlank() || state.userResponse.isBlank()) return
+        _uiState.update { it.copy(isExplaining = true) }
+        viewModelScope.launch {
+            try {
+                val impl = repository as RebuttalTrainerRepositoryImpl
+                val explanation = impl.generateExplanation(
+                    topicTitle = state.selectedTopicTitle,
+                    promptArgument = state.promptArgument,
+                    userResponse = state.userResponse,
+                    attempt = attempt
+                )
+                _uiState.update {
+                    it.copy(isExplaining = false, explanation = explanation,
+                        chatMessages = listOf(RebuttalChatMessage("ai",
+                            "Here's a detailed breakdown of your scores. Ask me anything about your performance!")))
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isExplaining = false, error = e.message ?: "Failed to get explanation") }
+            }
+        }
+    }
+
+    fun onChatInputChanged(text: String) {
+        _uiState.update { it.copy(chatInput = text) }
+    }
+
+    fun sendChatMessage() {
+        val state = _uiState.value
+        val text = state.chatInput.trim()
+        if (text.isBlank()) return
+        val userMsg = RebuttalChatMessage("user", text)
+        _uiState.update { it.copy(chatInput = "", chatMessages = state.chatMessages + userMsg) }
+        viewModelScope.launch {
+            try {
+                val impl = repository as RebuttalTrainerRepositoryImpl
+                val reply = impl.chatAboutRebuttal(
+                    topicTitle = state.selectedTopicTitle,
+                    promptArgument = state.promptArgument,
+                    userResponse = state.userResponse,
+                    attempt = state.currentAttempt ?: return@launch,
+                    messages = _uiState.value.chatMessages
+                )
+                _uiState.update { it.copy(chatMessages = _uiState.value.chatMessages + reply) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Chat failed: ${e.message}") }
+            }
+        }
+    }
+
+    fun clearChat() {
+        _uiState.update { it.copy(explanation = null, chatMessages = emptyList(), chatInput = "") }
+    }
+
     fun newRound() {
-        _uiState.update { it.copy(phase = TrainerPhase.SETUP, promptArgument = "", userResponse = "", currentAttempt = null) }
+        _uiState.update { it.copy(phase = TrainerPhase.SETUP, promptArgument = "", userResponse = "", currentAttempt = null, explanation = null, chatMessages = emptyList(), chatInput = "") }
     }
 
     fun selectSession(sessionId: String) {
@@ -165,7 +226,26 @@ class RebuttalTrainerViewModel @Inject constructor(
     }
 
     fun backToTopics() {
-        _uiState.update { it.copy(phase = TrainerPhase.TOPIC_SELECT, selectedTopicId = null, promptArgument = "", userResponse = "", currentAttempt = null) }
+        _uiState.update { it.copy(phase = TrainerPhase.TOPIC_SELECT, selectedTopicId = null, promptArgument = "", userResponse = "", currentAttempt = null, explanation = null, chatMessages = emptyList(), chatInput = "", reviewingSessionId = null) }
+    }
+
+    fun loadSession(sessionId: String) {
+        viewModelScope.launch {
+            val session = repository.getSession(sessionId) ?: return@launch
+            repository.getAttempts(sessionId).collect { attempts ->
+                val best = attempts.maxByOrNull { it.totalScore }
+                _uiState.update {
+                    it.copy(
+                        reviewingSessionId = sessionId,
+                        selectedTopicTitle = session.topicTitle,
+                        attempts = attempts,
+                        currentAttempt = best,
+                        phase = if (best != null) TrainerPhase.RESULT else TrainerPhase.TOPIC_SELECT,
+                        explanation = null, chatMessages = emptyList()
+                    )
+                }
+            }
+        }
     }
 
     fun clearError() {
