@@ -171,14 +171,9 @@ class RebuttalTrainerRepositoryImpl @Inject constructor(
         val cleanedJson = json.trim()
             .removePrefix("```json").removePrefix("```")
             .removeSuffix("```").trim()
-        val sanitized = sanitizeJson(cleanedJson)
         val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
         val mapType = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
-        val map = try {
-            moshi.adapter<Map<String, Any>>(mapType).lenient().fromJson(sanitized)
-        } catch (_: Exception) {
-            emptyMap()
-        } ?: emptyMap()
+        val map = moshi.adapter<Map<String, Any>>(mapType).fromJson(cleanedJson) ?: emptyMap()
         return RebuttalAttempt(
             sessionId = sessionId,
             promptArgument = "",
@@ -196,11 +191,12 @@ class RebuttalTrainerRepositoryImpl @Inject constructor(
         val cleanedJson = json.trim()
             .removePrefix("```json").removePrefix("```")
             .removeSuffix("```").trim()
-        val sanitized = sanitizeJson(cleanedJson)
+        // Only escape control characters inside string values, not structural whitespace
+        val sanitized = sanitizeJsonStrings(cleanedJson)
         val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
         val mapType = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
         val map = try {
-            moshi.adapter<Map<String, Any>>(mapType).lenient().fromJson(sanitized)
+            moshi.adapter<Map<String, Any>>(mapType).fromJson(sanitized)
         } catch (_: Exception) {
             emptyMap()
         } ?: emptyMap()
@@ -226,11 +222,11 @@ class RebuttalTrainerRepositoryImpl @Inject constructor(
         val cleanedJson = json.trim()
             .removePrefix("```json").removePrefix("```")
             .removeSuffix("```").trim()
-        val sanitized = sanitizeJson(cleanedJson)
+        val sanitized = sanitizeJsonStrings(cleanedJson)
         val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
         val listType = Types.newParameterizedType(List::class.java, Map::class.java)
         val parsed = try {
-            moshi.adapter<List<Map<String, Any>>>(listType).lenient().fromJson(sanitized)
+            moshi.adapter<List<Map<String, Any>>>(listType).fromJson(sanitized)
         } catch (_: Exception) {
             null
         } ?: return emptyList()
@@ -245,26 +241,26 @@ class RebuttalTrainerRepositoryImpl @Inject constructor(
 }
 
 /**
- * Escapes unescaped control characters in JSON string values.
- * AI-generated JSON often contains literal newlines/tabs inside strings.
+ * Escapes control characters only inside JSON string values.
+ * Unlike sanitizeJson (which broke structural whitespace), this tracks
+ * whether we're inside a quote-delimited string and only escapes there.
  */
-private fun sanitizeJson(json: String): String {
+private fun sanitizeJsonStrings(json: String): String {
     val result = StringBuilder(json.length)
+    var inString = false
     var i = 0
     while (i < json.length) {
         val c = json[i]
-        if (c == '\\' && i + 1 < json.length) {
-            result.append(c)
-            i++
-            result.append(json[i])
-        } else if (c == '\n') {
-            result.append("\\n")
-        } else if (c == '\r') {
-            result.append("\\r")
-        } else if (c == '\t') {
-            result.append("\\t")
-        } else {
-            result.append(c)
+        when {
+            // Toggle inString on unescaped quotes
+            c == '"' && (i == 0 || json[i - 1] != '\\') -> {
+                inString = !inString
+                result.append(c)
+            }
+            inString && c == '\n' -> result.append("\\n")
+            inString && c == '\r' -> result.append("\\r")
+            inString && c == '\t' -> result.append("\\t")
+            else -> result.append(c)
         }
         i++
     }
