@@ -31,6 +31,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.DebateTurn
 import com.aidebate.domain.model.SpeakerRole
 import com.aidebate.presentation.common.GlowWrapper
+import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
 
 @Composable
@@ -42,39 +43,40 @@ fun DebateResultScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val t = LocalTranslation.current
 
     LaunchedEffect(sessionId) { viewModel.initialize(sessionId) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Debate Result") },
+                title = { Text(t.debateResult) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, t.back)
                     }
                 },
                 actions = {
                     IconButton(onClick = {
-                        val shareText = buildString {
-                            append("AI Debate Result\n\n")
-                            append("Topic: ${uiState.topicTitle}\n\n")
+                        val resultText = buildString {
+                            append(String.format(t.resultTopic, uiState.topicTitle) + "\n\n")
                             uiState.turns.forEach { turn ->
                                 append("${turn.speakerRole.name}: ${turn.content}\n\n")
                             }
                             if (uiState.result != null) {
-                                append("WINNER: ${uiState.result!!.winner?.name}\n")
+                                append(String.format(t.resultWinner, uiState.result!!.winner?.name) + "\n")
                                 append(uiState.result!!.summary)
                             }
                         }
+                        val shareText = String.format(t.shareResult, resultText)
                         val sendIntent = Intent().apply {
                             action = Intent.ACTION_SEND
                             putExtra(Intent.EXTRA_TEXT, shareText)
                             type = "text/plain"
                         }
-                        context.startActivity(Intent.createChooser(sendIntent, "Share"))
+                        context.startActivity(Intent.createChooser(sendIntent, t.share))
                     }) {
-                        Icon(Icons.Default.Share, "Share")
+                        Icon(Icons.Default.Share, t.share)
                     }
                 }
             )
@@ -111,7 +113,7 @@ fun DebateResultScreen(
                 // Transcript
                 item(key = "transcriptHeader") {
                     Text(
-                        "Transcript",
+                        t.transcript,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(top = Spacing.sm)
@@ -132,7 +134,7 @@ fun DebateResultScreen(
                     ) {
                         Icon(Icons.Default.Home, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(Spacing.sm))
-                        Text("Back to Home")
+                        Text(t.backToHome)
                     }
                 }
             }
@@ -146,6 +148,7 @@ private fun WinnerCard(
     winner: SpeakerRole?,
     summary: String,
 ) {
+    val t = LocalTranslation.current
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
 
@@ -192,7 +195,7 @@ private fun WinnerCard(
 
                     if (winner != null) {
                         Text(
-                            "Winner",
+                            t.winner,
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
                         )
@@ -212,7 +215,7 @@ private fun WinnerCard(
                         }
                     } else {
                         Text(
-                            "No winner declared",
+                            t.noWinnerDeclared,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
@@ -225,6 +228,7 @@ private fun WinnerCard(
 
 @Composable
 private fun TimelineSection(turns: List<DebateTurn>) {
+    val t = LocalTranslation.current
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
 
@@ -240,7 +244,7 @@ private fun TimelineSection(turns: List<DebateTurn>) {
         ) {
             Column(modifier = Modifier.padding(Spacing.lg)) {
                 Text(
-                    "Key Moments",
+                    t.keyMoments,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = Spacing.md)
@@ -275,7 +279,7 @@ private fun TimelineSection(turns: List<DebateTurn>) {
                                 modifier = Modifier.width(32.dp)
                             )
                             Text(
-                                turn.content.take(60) + if (turn.content.length > 60) "…" else "",
+                                turn.content.take(60) + if (turn.content.length > 60) t.ellipsis else "",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 maxLines = 1,

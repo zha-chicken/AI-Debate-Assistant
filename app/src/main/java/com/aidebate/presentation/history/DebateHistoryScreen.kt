@@ -19,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.DebateMode
 import com.aidebate.domain.model.HistoryItem
 import com.aidebate.domain.model.SessionStatus
+import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -32,16 +33,17 @@ fun DebateHistoryScreen(
     viewModel: DebateHistoryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val t = LocalTranslation.current
 
     LaunchedEffect(Unit) { viewModel.loadSessions() }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("History") },
+                title = { Text(t.history) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, t.back)
                     }
                 }
             )
@@ -60,12 +62,12 @@ fun DebateHistoryScreen(
                     )
                     Spacer(Modifier.height(Spacing.lg))
                     Text(
-                        "No activity yet",
+                        t.noActivityYet,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                     Text(
-                        "Start a debate or try the rebuttal trainer",
+                        t.noActivitySubtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
@@ -104,6 +106,7 @@ private fun DebateHistoryCard(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val t = LocalTranslation.current
     var showDelete by remember { mutableStateOf(false) }
     val summary = item.summary
 
@@ -125,7 +128,7 @@ private fun DebateHistoryCard(
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Text(
-                        "Debate",
+                        t.debateBadge,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -145,7 +148,7 @@ private fun DebateHistoryCard(
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                     ) {
                         Text(
-                            if (summary.mode == DebateMode.USER_VS_AI) "User vs AI" else "AI vs AI",
+                            if (summary.mode == DebateMode.USER_VS_AI) t.userVsAi else t.aiVsAi,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -156,7 +159,7 @@ private fun DebateHistoryCard(
                         color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
                     ) {
                         Text(
-                            "${summary.turnCount} turns",
+                            String.format(t.turns, summary.turnCount),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -192,7 +195,7 @@ private fun DebateHistoryCard(
 
             IconButton(onClick = { showDelete = true }) {
                 Icon(
-                    Icons.Default.Delete, "Delete",
+                    Icons.Default.Delete, t.delete,
                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
                 )
             }
@@ -202,14 +205,14 @@ private fun DebateHistoryCard(
     if (showDelete) {
         AlertDialog(
             onDismissRequest = { showDelete = false },
-            title = { Text("Delete this debate?") },
+            title = { Text(t.deleteConfirmTitle) },
             confirmButton = {
                 TextButton(onClick = { onDelete(); showDelete = false }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(t.delete, color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDelete = false }) { Text("Cancel") }
+                TextButton(onClick = { showDelete = false }) { Text(t.cancel) }
             }
         )
     }
@@ -220,6 +223,7 @@ private fun RebuttalHistoryCard(
     item: HistoryItem.Rebuttal,
     onClick: () -> Unit
 ) {
+    val t = LocalTranslation.current
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -238,7 +242,7 @@ private fun RebuttalHistoryCard(
                     color = MaterialTheme.colorScheme.tertiaryContainer
                 ) {
                     Text(
-                        "Rebuttal Practice",
+                        t.rebuttalPractice,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -274,7 +278,7 @@ private fun RebuttalHistoryCard(
                             color = scoreColor.copy(alpha = 0.15f)
                         ) {
                             Text(
-                                "Best: ${item.bestScore}/100",
+                                String.format(t.bestScore, item.bestScore),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = scoreColor,
@@ -284,7 +288,7 @@ private fun RebuttalHistoryCard(
                     }
                     if (item.attemptCount > 0) {
                         Text(
-                            "${item.attemptCount} attempt${if (item.attemptCount > 1) "s" else ""}",
+                            String.format(t.attemptCount, item.attemptCount),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )

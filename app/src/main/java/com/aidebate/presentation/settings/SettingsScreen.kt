@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.AiProvider
 import com.aidebate.domain.model.ProviderConfig
+import com.aidebate.presentation.localization.*
+import com.aidebate.presentation.theme.Spacing
 
 @Composable
 fun SettingsScreen(
@@ -25,16 +27,17 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val t = LocalTranslation.current
 
     LaunchedEffect(Unit) { viewModel.loadProviders() }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("AI Providers") },
+                title = { Text(t.settingsTitle) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, t.back)
                     }
                 }
             )
@@ -45,21 +48,60 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // === General Settings ===
+            item {
+                SectionHeader(t.sectionGeneral)
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            t.language,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = uiState.currentLanguage == LANG_ENGLISH,
+                                onClick = { viewModel.setLanguage(LANG_ENGLISH) },
+                                label = { Text(t.english) }
+                            )
+                            FilterChip(
+                                selected = uiState.currentLanguage == LANG_CHINESE,
+                                onClick = { viewModel.setLanguage(LANG_CHINESE) },
+                                label = { Text(t.chinese) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // === AI Providers ===
+            item {
+                SectionHeader(t.aiProviders)
+            }
+
             item {
                 Text(
-                    "Configure at least one provider to start debating.",
+                    t.aiProvidersSubtitle,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
 
             items(uiState.providers) { config ->
                 ProviderCard(
                     config = config,
-                    onClick = { onProviderSelected(config.provider.name) }
+                    onClick = { onProviderSelected(config.provider.name) },
+                    t = t
                 )
             }
         }
@@ -67,9 +109,21 @@ fun SettingsScreen(
 }
 
 @Composable
+private fun SectionHeader(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+    )
+}
+
+@Composable
 private fun ProviderCard(
     config: ProviderConfig,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    t: Translation
 ) {
     Card(
         onClick = onClick,
@@ -115,7 +169,7 @@ private fun ProviderCard(
                         else MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
                     ) {
                         Text(
-                            if (config.isEnabled) "Enabled" else "Disabled",
+                            if (config.isEnabled) t.enabled else t.disabled,
                             style = MaterialTheme.typography.labelSmall,
                             color = if (config.isEnabled) MaterialTheme.colorScheme.tertiary
                             else MaterialTheme.colorScheme.error,
@@ -126,13 +180,13 @@ private fun ProviderCard(
 
                 if (config.isEnabled) {
                     Text(
-                        config.modelName.ifBlank { "Default model" },
+                        config.modelName.ifBlank { t.defaultModel },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 } else {
                     Text(
-                        "Tap to configure",
+                        t.tapToConfigure,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     )

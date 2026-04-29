@@ -27,6 +27,7 @@ import com.aidebate.domain.model.ProviderConfig
 import com.aidebate.domain.model.SpeakerRole
 import com.aidebate.presentation.common.RolePill
 import com.aidebate.presentation.common.RoleSelectionCard
+import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
 
 @Composable
@@ -37,6 +38,7 @@ fun DebateSetupScreen(
     viewModel: DebateSetupViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val t = LocalTranslation.current
 
     LaunchedEffect(topicId) { viewModel.initialize(topicId) }
 
@@ -49,10 +51,10 @@ fun DebateSetupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Debate Setup") },
+                title = { Text(t.debateSetup) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, t.back)
                     }
                 }
             )
@@ -75,17 +77,17 @@ fun DebateSetupScreen(
                 TopicCard(uiState.topicTitle)
 
                 // Debate Mode
-                SectionLabel("Debate Mode")
+                SectionLabel(t.debateMode)
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                     ModeCard(
-                        title = "User vs AI",
+                        title = t.userVsAi,
                         icon = Icons.Default.Person,
                         selected = uiState.selectedMode == DebateMode.USER_VS_AI,
                         onClick = { viewModel.onModeSelected(DebateMode.USER_VS_AI) },
                         modifier = Modifier.weight(1f)
                     )
                     ModeCard(
-                        title = "AI vs AI",
+                        title = t.aiVsAi,
                         icon = Icons.Default.Adb,
                         selected = uiState.selectedMode == DebateMode.AI_VS_AI,
                         onClick = { viewModel.onModeSelected(DebateMode.AI_VS_AI) },
@@ -94,19 +96,19 @@ fun DebateSetupScreen(
                 }
 
                 // Debate Format
-                SectionLabel("Format")
+                SectionLabel(t.format)
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                     ModeCard(
-                        title = "Structured",
-                        subtitle = "Opening, Rebuttal, Closing",
+                        title = t.structured,
+                        subtitle = t.structuredSubtitle,
                         icon = Icons.Default.Segment,
                         selected = uiState.selectedFormat == DebateFormat.STRUCTURED,
                         onClick = { viewModel.onFormatSelected(DebateFormat.STRUCTURED) },
                         modifier = Modifier.weight(1f)
                     )
                     ModeCard(
-                        title = "Free Flow",
-                        subtitle = "Open conversation",
+                        title = t.freeFlow,
+                        subtitle = t.freeFlowSubtitle,
                         icon = Icons.Default.Chat,
                         selected = uiState.selectedFormat == DebateFormat.FREE_FLOW,
                         onClick = { viewModel.onFormatSelected(DebateFormat.FREE_FLOW) },
@@ -115,13 +117,13 @@ fun DebateSetupScreen(
                 }
 
                 // AI Difficulty
-                SectionLabel("AI Difficulty")
+                SectionLabel(t.aiDifficulty)
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                     DebateDifficulty.entries.forEach { difficulty ->
                         val label = when (difficulty) {
-                            DebateDifficulty.EASY -> "Easy"
-                            DebateDifficulty.MEDIUM -> "Medium"
-                            DebateDifficulty.HARD -> "Hard"
+                            DebateDifficulty.EASY -> t.easy
+                            DebateDifficulty.MEDIUM -> t.medium
+                            DebateDifficulty.HARD -> t.hard
                         }
                         ModeCard(
                             title = label,
@@ -135,29 +137,29 @@ fun DebateSetupScreen(
                 // User position (only for User vs AI)
                 AnimatedVisibility(visible = uiState.selectedMode == DebateMode.USER_VS_AI) {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                        SectionLabel("Your Position")
+                        SectionLabel(t.yourPosition)
                         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                             RoleSelectionCard(
                                 selected = uiState.userSide == SpeakerRole.AI_PROPOSITION,
                                 onClick = { viewModel.onUserSideSelected(SpeakerRole.AI_PROPOSITION) },
                                 role = com.aidebate.presentation.theme.DebateRole.PRO,
-                                label = "For",
-                                subtitle = "Argue in favor",
+                                label = t.argueFor,
+                                subtitle = t.argueFor,
                                 modifier = Modifier.weight(1f)
                             )
                             RoleSelectionCard(
                                 selected = uiState.userSide == SpeakerRole.AI_OPPOSITION,
                                 onClick = { viewModel.onUserSideSelected(SpeakerRole.AI_OPPOSITION) },
                                 role = com.aidebate.presentation.theme.DebateRole.CON,
-                                label = "Against",
-                                subtitle = "Argue against",
+                                label = t.argueAgainst,
+                                subtitle = t.argueAgainst,
                                 modifier = Modifier.weight(1f)
                             )
                         }
 
                         // Live preview panel (User vs AI)
                         LivePreviewPanel(
-                            mode = "User vs AI",
+                            mode = t.userVsAi,
                             userSide = uiState.userSide,
                             propositionProvider = uiState.providerProposition,
                             oppositionProvider = uiState.providerOpposition,
@@ -167,7 +169,7 @@ fun DebateSetupScreen(
 
                 // AI Provider for Proposition
                 ProviderSelector(
-                    label = "AI for Proposition",
+                    label = t.aiForProposition,
                     providers = uiState.enabledProviders,
                     selectedProvider = uiState.providerProposition,
                     selectedModel = uiState.modelProposition,
@@ -177,7 +179,7 @@ fun DebateSetupScreen(
 
                 // AI Provider for Opposition
                 ProviderSelector(
-                    label = "AI for Opposition",
+                    label = t.aiForOpposition,
                     providers = uiState.enabledProviders,
                     selectedProvider = uiState.providerOpposition,
                     selectedModel = uiState.modelOpposition,
@@ -196,7 +198,7 @@ fun DebateSetupScreen(
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = null)
                     Spacer(Modifier.width(Spacing.sm))
-                    Text("Start Debate", style = MaterialTheme.typography.titleMedium)
+                    Text(t.startDebate, style = MaterialTheme.typography.titleMedium)
                 }
 
                 Spacer(Modifier.height(Spacing.xl))
@@ -207,6 +209,7 @@ fun DebateSetupScreen(
 
 @Composable
 private fun TopicCard(title: String) {
+    val t = LocalTranslation.current
     Card(
         shape = Radii.mediumShape,
         colors = CardDefaults.cardColors(
@@ -215,7 +218,7 @@ private fun TopicCard(title: String) {
     ) {
         Column(modifier = Modifier.padding(Spacing.lg)) {
             Text(
-                "Topic",
+                t.topic,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
@@ -235,6 +238,7 @@ private fun LivePreviewPanel(
     propositionProvider: AiProvider?,
     oppositionProvider: AiProvider?,
 ) {
+    val t = LocalTranslation.current
     Card(
         shape = Radii.mediumShape,
         colors = CardDefaults.cardColors(
@@ -247,7 +251,7 @@ private fun LivePreviewPanel(
                 .padding(Spacing.lg)
         ) {
             Text(
-                "Preview",
+                t.preview,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -277,7 +281,7 @@ private fun LivePreviewPanel(
                         )
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text("You", style = MaterialTheme.typography.labelSmall,
+                    Text(t.you, style = MaterialTheme.typography.labelSmall,
                         color = userTokens.color.primary)
                     if (userSide != null) {
                         Text(userTokens.label, style = MaterialTheme.typography.labelSmall,
@@ -285,7 +289,7 @@ private fun LivePreviewPanel(
                     }
                 }
 
-                Text("vs", style = MaterialTheme.typography.titleMedium,
+                Text(t.vs, style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
 
@@ -305,10 +309,10 @@ private fun LivePreviewPanel(
                         )
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text("AI", style = MaterialTheme.typography.labelSmall,
+                    Text(t.aiLabel, style = MaterialTheme.typography.labelSmall,
                         color = aiTokens.color.primary)
                     Text(
-                        oppositionProvider?.displayName ?: "AI",
+                        oppositionProvider?.displayName ?: t.aiLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = aiTokens.color.primary.copy(alpha = 0.6f)
                     )
@@ -384,6 +388,7 @@ private fun ProviderSelector(
     onProviderSelected: (AiProvider) -> Unit,
     onModelChanged: (String) -> Unit
 ) {
+    val t = LocalTranslation.current
     var expanded by remember { mutableStateOf(false) }
 
     Card(
@@ -402,7 +407,7 @@ private fun ProviderSelector(
 
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
                 OutlinedTextField(
-                    value = selectedProvider?.displayName ?: "Select provider",
+                    value = selectedProvider?.displayName ?: t.selectProvider,
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
@@ -412,7 +417,7 @@ private fun ProviderSelector(
                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     providers.forEach { config ->
                         DropdownMenuItem(
-                            text = { Text("${config.provider.displayName} — ${config.modelName.ifBlank { "default" }}") },
+                            text = { Text("${config.provider.displayName} — ${config.modelName.ifBlank { t.defaultModel }}") },
                             onClick = {
                                 onProviderSelected(config.provider)
                                 expanded = false
@@ -421,7 +426,7 @@ private fun ProviderSelector(
                     }
                     if (providers.isEmpty()) {
                         DropdownMenuItem(
-                            text = { Text("No providers configured. Go to Settings.") },
+                            text = { Text(t.noProvidersConfigured) },
                             onClick = { expanded = false }
                         )
                     }
@@ -433,7 +438,7 @@ private fun ProviderSelector(
                 OutlinedTextField(
                     value = selectedModel,
                     onValueChange = onModelChanged,
-                    label = { Text("Model name") },
+                    label = { Text(t.modelName) },
                     placeholder = { Text(selectedProvider.defaultBaseUrl) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,

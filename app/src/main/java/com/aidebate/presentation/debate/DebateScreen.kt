@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.*
 import com.aidebate.presentation.common.*
+import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
 
 // ============================================================
@@ -52,6 +53,7 @@ fun DebateScreen(
     viewModel: DebateViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val t = LocalTranslation.current
     val listState = rememberLazyListState()
     val isAiVsAi = uiState.mode == DebateMode.AI_VS_AI
 
@@ -84,7 +86,7 @@ fun DebateScreen(
                 title = {
                     Column {
                         Text(
-                            uiState.topicTitle.ifBlank { "Debate" },
+                            uiState.topicTitle.ifBlank { t.debateTitle },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1
@@ -104,7 +106,7 @@ fun DebateScreen(
                         if (uiState.turns.isNotEmpty()) viewModel.endDebate()
                         onBack()
                     }) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, t.back)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -156,9 +158,9 @@ fun DebateScreen(
                                     }
                                     is TimelineItem.Phase -> {
                                         val label = when (item.phase) {
-                                            StructuredPhase.OPENING -> "Opening Arguments"
-                                            StructuredPhase.REBUTTAL -> "Rebuttal Phase"
-                                            StructuredPhase.CLOSING -> "Closing Arguments"
+                                            StructuredPhase.OPENING -> t.phaseOpening
+                                            StructuredPhase.REBUTTAL -> t.phaseRebuttal
+                                            StructuredPhase.CLOSING -> t.phaseClosing
                                         }
                                         PhaseDivider(label = label)
                                     }
@@ -267,6 +269,7 @@ fun TapToAdvanceOverlay(
     nextProvider: String,
     onTap: () -> Unit
 ) {
+    val t = LocalTranslation.current
     val role = nextSpeaker.toDebateRole()
     val tokens = RoleTokenDefaults.forRole(role)
     val alpha = rememberInfiniteTransition(label = "tapPulse").animateFloat(
@@ -295,7 +298,7 @@ fun TapToAdvanceOverlay(
             )
             Spacer(Modifier.width(Spacing.md))
             Text(
-                "Tap to see $nextProvider's response",
+                String.format(t.tapToSeeResponse, nextProvider),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = tokens.color.primary
@@ -315,6 +318,7 @@ fun CelebrationEndCard(
     onJudge: () -> Unit,
     onViewResult: () -> Unit
 ) {
+    val t = LocalTranslation.current
     val winnerRole = result?.winner?.toDebateRole()
     val winnerTokens = winnerRole?.let { RoleTokenDefaults.forRole(it) }
 
@@ -362,7 +366,7 @@ fun CelebrationEndCard(
 
                     // Animated title
                     Text(
-                        "Debate Complete",
+                        t.debateComplete,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -370,7 +374,7 @@ fun CelebrationEndCard(
                     if (result.winner != null) {
                         Spacer(Modifier.height(Spacing.sm))
                         Text(
-                            text = "Winner: ${result.winner.name}",
+                            text = String.format(t.winnerLabel, result.winner.name),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = winnerTokens?.color?.primary ?: MaterialTheme.colorScheme.tertiary,
@@ -388,10 +392,10 @@ fun CelebrationEndCard(
                     }
                     Spacer(Modifier.height(Spacing.lg))
                     OutlinedButton(onClick = onViewResult) {
-                        Text("View Full Result")
+                        Text(t.viewFullResult)
                     }
                 } else if (isJudging) {
-                    Text("Judging in progress...", style = MaterialTheme.typography.titleMedium)
+                    Text(t.judgingInProgress, style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(Spacing.sm))
                     CircularProgressIndicator(modifier = Modifier.size(24.dp))
                 } else {
@@ -402,17 +406,17 @@ fun CelebrationEndCard(
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.height(Spacing.md))
-                    Text("Debate Complete", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("Would you like an AI to judge this debate?",
+                    Text(t.debateComplete, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(t.wouldYouLikeJudge,
                         style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = Spacing.xs))
                     Spacer(Modifier.height(Spacing.md))
                     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                        OutlinedButton(onClick = onViewResult) { Text("Skip") }
+                        OutlinedButton(onClick = onViewResult) { Text(t.skip) }
                         Button(onClick = onJudge) {
                             Icon(Icons.Default.Gavel, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Judge Debate")
+                            Text(t.judgeDebate)
                         }
                     }
                 }
@@ -427,6 +431,7 @@ fun CelebrationEndCard(
 
 @Composable
 fun ErrorCard(message: String, onDismiss: () -> Unit, onRetry: () -> Unit) {
+    val t = LocalTranslation.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = Radii.mediumShape,
@@ -437,7 +442,7 @@ fun ErrorCard(message: String, onDismiss: () -> Unit, onRetry: () -> Unit) {
                 Icon(Icons.Default.ErrorOutline, contentDescription = null,
                     tint = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.width(Spacing.sm))
-                Text("Error", fontWeight = FontWeight.Bold,
+                Text(t.errorGeneric, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onErrorContainer)
             }
             Text(message, style = MaterialTheme.typography.bodySmall,
@@ -445,8 +450,8 @@ fun ErrorCard(message: String, onDismiss: () -> Unit, onRetry: () -> Unit) {
                 modifier = Modifier.padding(top = Spacing.xs))
             Spacer(Modifier.height(Spacing.sm))
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                TextButton(onClick = onDismiss) { Text("Dismiss") }
-                Button(onClick = onRetry) { Text("Retry") }
+                TextButton(onClick = onDismiss) { Text(t.dismiss) }
+                Button(onClick = onRetry) { Text(t.retry) }
             }
         }
     }
@@ -463,6 +468,7 @@ fun UserInputBar(
     onSend: () -> Unit,
     enabled: Boolean
 ) {
+    val t = LocalTranslation.current
     Surface(
         tonalElevation = 3.dp,
         shadowElevation = 8.dp
@@ -477,7 +483,7 @@ fun UserInputBar(
                 value = value,
                 onValueChange = onValueChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Write your argument...") },
+                placeholder = { Text(t.writeArgument) },
                 shape = RoundedCornerShape(24.dp),
                 minLines = 1,
                 maxLines = 4,
@@ -490,7 +496,7 @@ fun UserInputBar(
                 modifier = Modifier.size(48.dp),
                 shape = CircleShape
             ) {
-                Icon(Icons.Default.Send, "Send")
+                Icon(Icons.Default.Send, t.send)
             }
         }
     }

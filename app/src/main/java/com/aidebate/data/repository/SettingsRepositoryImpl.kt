@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.aidebate.domain.repository.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -30,5 +31,11 @@ class SettingsRepositoryImpl @Inject constructor(
         return context.dataStore.data.map { prefs ->
             prefs[stringPreferencesKey(key)]
         }.firstOrNull()
+    }
+
+    override fun observeString(key: String): Flow<String?> {
+        return context.dataStore.data.map { prefs ->
+            prefs[stringPreferencesKey(key)]
+        }
     }
 }

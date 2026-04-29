@@ -33,4 +33,5 @@ interface ProviderConfigRepository {
 interface SettingsRepository {
     suspend fun setString(key: String, value: String)
     suspend fun getString(key: String): String?
+    fun observeString(key: String): Flow<String?>
 }

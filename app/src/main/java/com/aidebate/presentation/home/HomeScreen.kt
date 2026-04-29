@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
 import kotlinx.coroutines.delay
 
@@ -38,11 +39,12 @@ fun HomeScreen(
     onRebuttalTrainer: () -> Unit = {},
     onFallacyDetector: () -> Unit = {}
 ) {
+    val t = LocalTranslation.current
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Text("AI Debate", fontWeight = FontWeight.Bold)
+                    Text(t.appTitle, fontWeight = FontWeight.Bold)
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -65,11 +67,11 @@ fun HomeScreen(
             Spacer(Modifier.height(Spacing.xxl))
 
             // Debate Actions
-            SectionHeader("Debate Actions")
+            SectionHeader(t.sectionDebateActions)
             StaggeredCard(
                 index = 0,
-                title = "New Debate",
-                subtitle = "Start a new debate session with AI",
+                title = t.newDebate,
+                subtitle = t.newDebateSubtitle,
                 icon = Icons.Filled.PlayArrow,
                 onClick = onNewDebate,
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -78,8 +80,8 @@ fun HomeScreen(
             )
             StaggeredCard(
                 index = 1,
-                title = "Debate History",
-                subtitle = "Review past debates and transcripts",
+                title = t.debateHistory,
+                subtitle = t.debateHistorySubtitle,
                 icon = Icons.Filled.History,
                 onClick = onHistory,
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -90,11 +92,11 @@ fun HomeScreen(
             Spacer(Modifier.height(Spacing.xl))
 
             // Preparation Tools
-            SectionHeader("Preparation Tools")
+            SectionHeader(t.sectionPrepTools)
             StaggeredCard(
                 index = 2,
-                title = "Argument Map",
-                subtitle = "Visual mindmap of pro & con arguments",
+                title = t.argumentMap,
+                subtitle = t.argumentMapSubtitle,
                 icon = Icons.Filled.AccountTree,
                 onClick = onArgumentMap,
                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
@@ -103,8 +105,8 @@ fun HomeScreen(
             )
             StaggeredCard(
                 index = 3,
-                title = "Rebuttal Trainer",
-                subtitle = "Practice rebuttals under timed pressure",
+                title = t.rebuttalTrainer,
+                subtitle = t.rebuttalTrainerSubtitle,
                 icon = Icons.Filled.Timer,
                 onClick = onRebuttalTrainer,
                 containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
@@ -113,8 +115,8 @@ fun HomeScreen(
             )
             StaggeredCard(
                 index = 4,
-                title = "Fallacy Detector",
-                subtitle = "Identify logical fallacies in arguments",
+                title = t.fallacyDetector,
+                subtitle = t.fallacyDetectorSubtitle,
                 icon = Icons.Filled.Search,
                 onClick = onFallacyDetector,
                 containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
@@ -127,8 +129,8 @@ fun HomeScreen(
             // Settings
             StaggeredCard(
                 index = 5,
-                title = "Settings",
-                subtitle = "Configure AI providers and models",
+                title = t.settings,
+                subtitle = t.settingsSubtitle,
                 icon = Icons.Filled.Settings,
                 onClick = onSettings,
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -230,15 +232,16 @@ private fun HeroSection() {
 
     Spacer(Modifier.height(Spacing.lg))
 
+    val t = LocalTranslation.current
     Text(
-        "Welcome to AI Debate",
+        t.welcomeTitle,
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center
     )
 
     Text(
-        "Challenge AI or watch two AIs debate each other",
+        t.welcomeSubtitle,
         style = MaterialTheme.typography.bodyMedium,
         textAlign = TextAlign.Center,
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),

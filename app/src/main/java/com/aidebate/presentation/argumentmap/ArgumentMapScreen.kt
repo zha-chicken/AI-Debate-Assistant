@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.NodeType
 import com.aidebate.presentation.theme.SuccessGreen
+import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.WarningAmber
 import kotlin.math.sqrt
 
@@ -41,6 +42,7 @@ fun ArgumentMapScreen(
     viewModel: ArgumentMapViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val t = LocalTranslation.current
 
     LaunchedEffect(topicId) { viewModel.initialize(topicId) }
 
@@ -56,11 +58,11 @@ fun ArgumentMapScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(uiState.topicTitle.ifBlank { "Argument Map" },
+                        Text(uiState.topicTitle.ifBlank { t.argumentMapTitle },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold, maxLines = 1)
                         if (uiState.nodes.isNotEmpty()) {
-                            Text("${uiState.nodes.size} arguments",
+                            Text(String.format(t.argumentCount, uiState.nodes.size),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                         }
@@ -68,7 +70,7 @@ fun ArgumentMapScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, t.back)
                     }
                 },
                 actions = {
@@ -77,7 +79,7 @@ fun ArgumentMapScreen(
                             enabled = !uiState.isGenerating) {
                             if (uiState.isGenerating)
                                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                            else Icon(Icons.Filled.AutoAwesome, "Regenerate")
+                            else Icon(Icons.Filled.AutoAwesome, t.regenerate)
                         }
                     }
                     MenuBox(
@@ -100,8 +102,8 @@ fun ArgumentMapScreen(
                             viewModel.showEditDialog(it.id)
                         }
                     },
-                    icon = { Icon(Icons.Default.Edit, "Edit") },
-                    text = { Text("Edit") }
+                    icon = { Icon(Icons.Default.Edit, t.edit) },
+                    text = { Text(t.edit) }
                 )
             }
         }
@@ -217,7 +219,7 @@ fun ArgumentMapScreen(
                         Row(Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(Modifier.size(24.dp))
                             Spacer(Modifier.width(16.dp))
-                            Text("Generating argument map...",
+                            Text(t.generatingMap,
                                 style = MaterialTheme.typography.bodyLarge)
                         }
                     }
@@ -240,7 +242,7 @@ fun ArgumentMapScreen(
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             style = MaterialTheme.typography.bodySmall)
                         IconButton(onClick = { viewModel.clearError() }) {
-                            Icon(Icons.Default.Close, "Dismiss")
+                            Icon(Icons.Default.Close, t.dismiss)
                         }
                     }
                 }
@@ -259,6 +261,7 @@ private fun EmptyState(onGenerate: () -> Unit) {
     val pulse by rememberInfiniteTransition(label = "empty").animateFloat(
         0.85f, 1f, infiniteRepeatable(tween(1500, easing = EaseInOutCubic), RepeatMode.Reverse), label = "p"
     )
+    val t = LocalTranslation.current
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -268,17 +271,17 @@ private fun EmptyState(onGenerate: () -> Unit) {
             Modifier.size(72.dp).scale(pulse),
             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
         Spacer(Modifier.height(16.dp))
-        Text("No argument map yet",
+        Text(t.noMapYet,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
-        Text("Generate a visual mindmap using AI",
+        Text(t.generateMap,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
         Spacer(Modifier.height(24.dp))
         Button(onClick = onGenerate, shape = RoundedCornerShape(12.dp)) {
             Icon(Icons.Filled.AutoAwesome, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Generate with AI")
+            Text(t.generateWithAi)
         }
     }
 }
@@ -339,13 +342,14 @@ private fun NodeEditDialog(
     var nodeType by remember(uiState.showAddDialog, uiState.showEditDialog) {
         mutableStateOf(uiState.editNodeType)
     }
+    val t = LocalTranslation.current
 
     AlertDialog(
         onDismissRequest = { viewModel.dismissDialog() },
         shape = RoundedCornerShape(20.dp),
         title = {
             Text(
-                if (uiState.showAddDialog) "Add Argument" else "Edit Argument",
+                if (uiState.showAddDialog) t.addArgument else t.editArgument,
                 fontWeight = FontWeight.Bold
             )
         },
@@ -353,9 +357,9 @@ private fun NodeEditDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(
-                        NodeType.PRO to "Pro",
-                        NodeType.CON to "Con",
-                        NodeType.EVIDENCE to "Evidence"
+                        NodeType.PRO to t.pro,
+                        NodeType.CON to t.con,
+                        NodeType.EVIDENCE to t.evidence
                     ).forEach { (type, label) ->
                         FilterChip(
                             selected = nodeType == type,
@@ -381,7 +385,7 @@ private fun NodeEditDialog(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Title") },
+                    label = { Text(t.title) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -389,7 +393,7 @@ private fun NodeEditDialog(
                 OutlinedTextField(
                     value = content,
                     onValueChange = { content = it },
-                    label = { Text("Details") },
+                    label = { Text(t.details) },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -403,17 +407,17 @@ private fun NodeEditDialog(
                 viewModel.onEditTypeChanged(nodeType)
                 if (uiState.showAddDialog) viewModel.saveNewNode()
                 else viewModel.saveEditedNode()
-            }) { Text("Save", fontWeight = FontWeight.SemiBold) }
+            }) { Text(t.save, fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = {
             Row {
                 if (uiState.showEditDialog && uiState.selectedNodeId != null) {
                     TextButton(onClick = { viewModel.deleteSelectedNode() }) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Text(t.delete, color = MaterialTheme.colorScheme.error)
                     }
                 }
                 TextButton(onClick = { viewModel.dismissDialog() }) {
-                    Text("Cancel")
+                    Text(t.cancel)
                 }
             }
         }
@@ -426,28 +430,29 @@ private fun MenuBox(
     onAddCon: () -> Unit,
     onAddEvidence: () -> Unit
 ) {
+    val t = LocalTranslation.current
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(Icons.Default.Add, "Add")
+            Icon(Icons.Default.Add, t.add)
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                text = { Text("Pro Argument") },
+                text = { Text(t.addProArgument) },
                 leadingIcon = {
                     Box(Modifier.size(16.dp).clip(CircleShape).background(SuccessGreen))
                 },
                 onClick = { expanded = false; onAddPro() }
             )
             DropdownMenuItem(
-                text = { Text("Con Argument") },
+                text = { Text(t.addConArgument) },
                 leadingIcon = {
                     Box(Modifier.size(16.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error))
                 },
                 onClick = { expanded = false; onAddCon() }
             )
             DropdownMenuItem(
-                text = { Text("Evidence") },
+                text = { Text(t.addEvidence) },
                 leadingIcon = {
                     Box(Modifier.size(16.dp).clip(CircleShape).background(WarningAmber))
                 },

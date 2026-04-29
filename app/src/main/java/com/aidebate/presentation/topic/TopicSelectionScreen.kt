@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
 
 @Composable
@@ -26,6 +27,7 @@ fun TopicSelectionScreen(
     viewModel: TopicSelectionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val t = LocalTranslation.current
 
     LaunchedEffect(Unit) { viewModel.loadTopics() }
 
@@ -35,15 +37,15 @@ fun TopicSelectionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Choose a Topic") },
+                title = { Text(t.chooseTopic) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, t.back)
                     }
                 },
                 actions = {
                     IconButton(onClick = { showCustomDialog = true }) {
-                        Icon(Icons.Default.Add, "Custom topic")
+                        Icon(Icons.Default.Add, t.customTopic)
                     }
                 }
             )
@@ -62,12 +64,12 @@ fun TopicSelectionScreen(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Search topics...") },
+                    placeholder = { Text(t.searchTopics) },
                     leadingIcon = { Icon(Icons.Default.Search, null) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Clear, "Clear")
+                                Icon(Icons.Default.Clear, t.clear)
                             }
                         }
                     },
@@ -97,11 +99,11 @@ fun TopicSelectionScreen(
                         Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(Spacing.md))
                         Column {
-                            Text("Write your own topic",
+                            Text(t.writeYourOwnTopic,
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.primary)
-                            Text("Enter a custom debate question",
+                            Text(t.customTopicHint,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                         }
@@ -168,7 +170,7 @@ fun TopicSelectionScreen(
                         Modifier.fillMaxWidth().padding(Spacing.xxl),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No topics match \"$searchQuery\"",
+                        Text(String.format(t.noTopicsMatch, searchQuery),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                     }
@@ -182,12 +184,12 @@ fun TopicSelectionScreen(
         var inputText by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showCustomDialog = false; inputText = "" },
-            title = { Text("Custom Topic") },
+            title = { Text(t.customTopicDialogTitle) },
             text = {
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = { inputText = it },
-                    label = { Text("Your debate question") },
+                    label = { Text(t.yourDebateQuestion) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2,
                     shape = Radii.mediumShape
@@ -203,10 +205,10 @@ fun TopicSelectionScreen(
                         }
                     },
                     enabled = inputText.isNotBlank()
-                ) { Text("Add") }
+                ) { Text(t.add) }
             },
             dismissButton = {
-                TextButton(onClick = { showCustomDialog = false; inputText = "" }) { Text("Cancel") }
+                TextButton(onClick = { showCustomDialog = false; inputText = "" }) { Text(t.cancel) }
             }
         )
     }

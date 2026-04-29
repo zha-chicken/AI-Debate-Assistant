@@ -32,6 +32,7 @@ import com.aidebate.presentation.theme.*
 import com.aidebate.domain.model.RebuttalChatMessage
 import com.aidebate.domain.model.RebuttalExplanation
 import com.aidebate.domain.model.ScoreBreakdown
+import com.aidebate.presentation.localization.LocalTranslation
 
 @Composable
 fun RebuttalTrainerScreen(
@@ -40,6 +41,7 @@ fun RebuttalTrainerScreen(
     viewModel: RebuttalTrainerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val t = LocalTranslation.current
 
     LaunchedEffect(sessionId) {
         if (sessionId.isNotBlank()) viewModel.loadSession(sessionId)
@@ -48,13 +50,13 @@ fun RebuttalTrainerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Rebuttal Trainer", fontWeight = FontWeight.Bold) },
+                title = { Text(t.rebuttalTrainerTitle, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = {
                         if (uiState.phase != TrainerPhase.TOPIC_SELECT) viewModel.backToTopics()
                         else onBack()
                     }) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, t.back)
                     }
                 }
             )
@@ -83,10 +85,11 @@ fun RebuttalTrainerScreen(
 
 @Composable
 private fun TopicSelectPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
+    val t = LocalTranslation.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.lg)) {
-        Text("Select a Topic", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(t.selectTopic, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(Spacing.sm))
-        Text("Choose a debate topic to practice your rebuttal skills.",
+        Text(t.selectTopicSub,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
         Spacer(Modifier.height(Spacing.lg))
@@ -126,6 +129,7 @@ private fun TopicSelectPhase(uiState: RebuttalTrainerUiState, viewModel: Rebutta
 
 @Composable
 private fun SetupPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
+    val t = LocalTranslation.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.lg)) {
         if (uiState.selectedTopicTitle.isNotBlank()) {
             Card(
@@ -143,42 +147,47 @@ private fun SetupPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrain
             Spacer(Modifier.height(Spacing.lg))
         }
 
-        SectionHeader("Your Position")
+        SectionHeader(t.yourPosition)
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             RolePill(
                 selected = uiState.userSide == "FOR",
                 onClick = { viewModel.setSide("FOR") },
                 role = DebateRole.PRO,
-                label = "For"
+                label = t.argueFor
             )
             RolePill(
                 selected = uiState.userSide == "AGAINST",
                 onClick = { viewModel.setSide("AGAINST") },
                 role = DebateRole.CON,
-                label = "Against"
+                label = t.argueAgainst
             )
         }
 
         Spacer(Modifier.height(Spacing.lg))
-        SectionHeader("Difficulty")
+        SectionHeader(t.difficulty)
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             listOf("easy", "medium", "hard").forEach { diff ->
                 FilterChip(
                     selected = uiState.difficulty == diff,
                     onClick = { viewModel.setDifficulty(diff) },
-                    label = { Text(diff.replaceFirstChar { it.uppercase() }) }
+                    label = {
+                        Text(when (diff) {
+                            "easy" -> t.easy; "medium" -> t.medium; "hard" -> t.hard
+                            else -> diff.replaceFirstChar { it.uppercase() }
+                        })
+                    }
                 )
             }
         }
 
         Spacer(Modifier.height(Spacing.lg))
-        SectionHeader("Time Limit")
+        SectionHeader(t.timeLimit)
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            listOf(30 to "30s", 60 to "60s", 90 to "90s").forEach { (sec, label) ->
+            listOf(30, 60, 90).forEach { sec ->
                 FilterChip(
                     selected = uiState.timeLimitSec == sec,
                     onClick = { viewModel.setTimeLimit(sec) },
-                    label = { Text(label) },
+                    label = { Text(String.format(t.timeSec, sec)) },
                     leadingIcon = { Icon(Icons.Filled.Timer, null, Modifier.size(16.dp)) }
                 )
             }
@@ -198,9 +207,9 @@ private fun SetupPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrain
                     strokeWidth = 2.dp
                 )
                 Spacer(Modifier.width(Spacing.sm))
-                Text("Generating Argument...")
+                Text(t.generatingArgument)
             } else {
-                Text("Start Training")
+                Text(t.startTraining)
             }
         }
     }
@@ -212,9 +221,10 @@ private fun SetupPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrain
 
 @Composable
 private fun ReadyPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
+    val t = LocalTranslation.current
     Column(Modifier.fillMaxSize().padding(Spacing.lg).verticalScroll(rememberScrollState())) {
-        Text("Your Argument", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text("Read and prepare. Start the timer when ready.",
+        Text(t.yourArgument, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(t.readyInstruction,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
         Spacer(Modifier.height(Spacing.lg))
@@ -224,7 +234,7 @@ private fun ReadyPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrain
             shape = Radii.largeShape
         ) {
             Column(Modifier.padding(Spacing.xl)) {
-                Text("THE ARGUMENT",
+                Text(t.theArgument,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f))
@@ -237,9 +247,14 @@ private fun ReadyPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrain
 
         Spacer(Modifier.height(Spacing.lg))
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            AssistChip(onClick = {}, label = { Text("${uiState.timeLimitSec}s") },
+            AssistChip(onClick = {}, label = { Text(String.format(t.timeSec, uiState.timeLimitSec)) },
                 leadingIcon = { Icon(Icons.Filled.Timer, null, Modifier.size(16.dp)) })
-            AssistChip(onClick = {}, label = { Text(uiState.difficulty.replaceFirstChar { it.uppercase() }) },
+            AssistChip(onClick = {}, label = {
+                Text(when (uiState.difficulty) {
+                    "easy" -> t.easy; "medium" -> t.medium; "hard" -> t.hard
+                    else -> uiState.difficulty.replaceFirstChar { it.uppercase() }
+                })
+            },
                 leadingIcon = { Icon(Icons.Filled.Speed, null, Modifier.size(16.dp)) })
         }
 
@@ -251,7 +266,7 @@ private fun ReadyPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrain
         ) {
             Icon(Icons.Filled.Timer, null)
             Spacer(Modifier.width(Spacing.sm))
-            Text("Start Timer & Write Rebuttal")
+            Text(t.startTimer)
         }
     }
 }
@@ -262,6 +277,7 @@ private fun ReadyPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrain
 
 @Composable
 private fun RespondingPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
+    val t = LocalTranslation.current
     val urgency = uiState.timeRemainingSec <= 10
     val totalTime = uiState.timeLimitSec.toFloat().coerceAtLeast(1f)
     val progress = uiState.timeRemainingSec / totalTime
@@ -337,8 +353,8 @@ private fun RespondingPhase(uiState: RebuttalTrainerUiState, viewModel: Rebuttal
                 value = uiState.userResponse,
                 onValueChange = { viewModel.onResponseChanged(it) },
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                label = { Text("Write your rebuttal...") },
-                placeholder = { Text("Type your counter-argument here...") },
+                label = { Text(t.writeRebuttal) },
+                placeholder = { Text(t.rebuttalPlaceholder) },
                 minLines = 5,
                 shape = Radii.mediumShape
             )
@@ -350,9 +366,9 @@ private fun RespondingPhase(uiState: RebuttalTrainerUiState, viewModel: Rebuttal
                 shape = Radii.mediumShape,
                 enabled = uiState.userResponse.isNotBlank()
             ) {
-                Icon(Icons.Filled.Send, null)
+                Icon(Icons.Filled.Send, t.send)
                 Spacer(Modifier.width(Spacing.sm))
-                Text("Submit Rebuttal")
+                Text(t.submitRebuttal)
             }
         }
     }
@@ -364,6 +380,7 @@ private fun RespondingPhase(uiState: RebuttalTrainerUiState, viewModel: Rebuttal
 
 @Composable
 private fun ScoringPhase() {
+    val t = LocalTranslation.current
     Column(
         Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -371,7 +388,7 @@ private fun ScoringPhase() {
     ) {
         CircularProgressIndicator(Modifier.size(32.dp))
         Spacer(Modifier.height(Spacing.lg))
-        Text("Analyzing your rebuttal...", style = MaterialTheme.typography.bodyLarge)
+        Text(t.analyzingRebuttal, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -381,6 +398,7 @@ private fun ScoringPhase() {
 
 @Composable
 private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrainerViewModel) {
+    val t = LocalTranslation.current
     val attempt = uiState.currentAttempt ?: return
 
     val displayScore by animateIntAsState(
@@ -395,6 +413,9 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
         attempt.totalScore >= 50 -> "C"
         else -> "D"
     }
+    val displayGrade = when (grade) {
+        "A" -> t.gradeA; "B" -> t.gradeB; "C" -> t.gradeC; else -> t.gradeD
+    }
     val gradeColor = when (grade) {
         "A" -> SuccessGreen; "B" -> Tertiary; "C" -> WarningAmber
         else -> MaterialTheme.colorScheme.error
@@ -403,7 +424,7 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
     Column(
         modifier = Modifier.fillMaxSize().padding(Spacing.lg).verticalScroll(rememberScrollState())
     ) {
-        Text("Score Card", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(t.scoreCard, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(Spacing.xl))
 
         Card(
@@ -414,15 +435,15 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
                 Modifier.fillMaxWidth().padding(Spacing.xxl),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("TOTAL SCORE", style = MaterialTheme.typography.labelMedium,
+                Text(t.totalScore, style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f))
                 Spacer(Modifier.height(Spacing.sm))
-                Text("$displayScore / 100",
+                Text(String.format(t.scoreOutOf, displayScore),
                     style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer)
                 Spacer(Modifier.height(Spacing.sm))
                 Surface(shape = CircleShape, color = gradeColor.copy(alpha = 0.15f)) {
-                    Text(grade, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                    Text(displayGrade, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold, color = gradeColor)
                 }
@@ -431,13 +452,13 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
 
         Spacer(Modifier.height(Spacing.lg))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            AnimatedScoreChip("Logic", attempt.logicScore, Modifier.weight(1f))
-            AnimatedScoreChip("Clarity", attempt.clarityScore, Modifier.weight(1f))
+            AnimatedScoreChip(t.logic, attempt.logicScore, Modifier.weight(1f))
+            AnimatedScoreChip(t.clarity, attempt.clarityScore, Modifier.weight(1f))
         }
         Spacer(Modifier.height(Spacing.sm))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            AnimatedScoreChip("Persuasion", attempt.persuasionScore, Modifier.weight(1f))
-            AnimatedScoreChip("Evidence", attempt.evidenceScore, Modifier.weight(1f))
+            AnimatedScoreChip(t.persuasion, attempt.persuasionScore, Modifier.weight(1f))
+            AnimatedScoreChip(t.evidenceLabel, attempt.evidenceScore, Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(Spacing.xl))
@@ -447,7 +468,7 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
             shape = Radii.largeShape
         ) {
             Column(Modifier.padding(Spacing.xl)) {
-                Text("Feedback", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                Text(t.feedback, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer)
                 Spacer(Modifier.height(Spacing.sm))
                 Text(attempt.feedback, style = MaterialTheme.typography.bodyMedium,
@@ -469,17 +490,17 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
                     CircularProgressIndicator(Modifier.size(18.dp),
                         color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                     Spacer(Modifier.width(Spacing.sm))
-                    Text("Getting detailed breakdown...")
+                    Text(t.gettingBreakdown)
                 } else {
                     Icon(Icons.Default.Info, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(Spacing.sm))
-                    Text("Explain Score")
+                    Text(t.explainScore)
                 }
             }
         } else {
             // Per-category breakdown
             Spacer(Modifier.height(Spacing.lg))
-            Text("Detailed Breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(t.detailedBreakdown, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(Spacing.sm))
 
             uiState.explanation!!.breakdown.forEach { breakdown ->
@@ -494,7 +515,7 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
                     shape = Radii.mediumShape
                 ) {
                     Column(Modifier.padding(Spacing.lg)) {
-                        Text("Overall Advice", fontWeight = FontWeight.Bold,
+                        Text(t.overallAdvice, fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onTertiaryContainer)
                         Spacer(Modifier.height(Spacing.xs))
@@ -524,7 +545,7 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
             }
 
             // ———— CHAT SECTION ————
-            Text("Ask About This Score", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(t.askAboutScore, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(Spacing.sm))
 
             uiState.chatMessages.forEach { msg ->
@@ -539,7 +560,7 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
                     value = uiState.chatInput,
                     onValueChange = { viewModel.onChatInputChanged(it) },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Ask about your score...") },
+                    placeholder = { Text(t.askPlaceholder) },
                     shape = RoundedCornerShape(20.dp),
                     singleLine = true
                 )
@@ -550,7 +571,7 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
                     modifier = Modifier.size(44.dp),
                     shape = CircleShape
                 ) {
-                    Icon(Icons.Default.Send, "Send")
+                    Icon(Icons.Default.Send, t.send)
                 }
             }
         }
@@ -564,12 +585,12 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
         ) {
             Row(Modifier.fillMaxWidth().padding(Spacing.md), horizontalArrangement = Arrangement.SpaceEvenly) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Time taken", style = MaterialTheme.typography.labelSmall)
-                    Text("${attempt.timeTakenMs / 1000}s", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(t.timeTaken, style = MaterialTheme.typography.labelSmall)
+                    Text(String.format(t.timeSec, attempt.timeTakenMs / 1000), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Limit", style = MaterialTheme.typography.labelSmall)
-                    Text("${attempt.timeLimitSec}s", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(t.limit, style = MaterialTheme.typography.labelSmall)
+                    Text(String.format(t.timeSec, attempt.timeLimitSec), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -577,10 +598,10 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
         Spacer(Modifier.height(Spacing.xl))
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
             OutlinedButton(onClick = { viewModel.newRound() }, modifier = Modifier.weight(1f)) {
-                Text("New Round")
+                Text(t.newRound)
             }
             Button(onClick = { viewModel.startTimer() }, modifier = Modifier.weight(1f)) {
-                Text("Retry Same")
+                Text(t.retrySame)
             }
         }
     }
@@ -592,6 +613,7 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
 
 @Composable
 private fun AnimatedScoreChip(label: String, score: Int, modifier: Modifier = Modifier) {
+    val t = LocalTranslation.current
     val displayScore by animateIntAsState(
         targetValue = score,
         animationSpec = tween(600, delayMillis = 400, easing = EaseOutCubic),
@@ -607,7 +629,7 @@ private fun AnimatedScoreChip(label: String, score: Int, modifier: Modifier = Mo
                 color = when { score >= 20 -> SuccessGreen; score >= 15 -> WarningAmber; else -> MaterialTheme.colorScheme.error })
             Text(label, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-            Text("/25", style = MaterialTheme.typography.labelSmall,
+            Text(t.scoreDivider, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
         }
     }
@@ -615,6 +637,7 @@ private fun AnimatedScoreChip(label: String, score: Int, modifier: Modifier = Mo
 
 @Composable
 private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
+    val t = LocalTranslation.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -626,7 +649,7 @@ private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
             Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error)
             Spacer(Modifier.width(Spacing.sm))
             Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-            TextButton(onClick = onDismiss) { Text("Dismiss") }
+            TextButton(onClick = onDismiss) { Text(t.dismissError) }
         }
     }
 }
@@ -642,6 +665,7 @@ private fun SectionHeader(text: String) {
 
 @Composable
 private fun BreakdownCard(breakdown: ScoreBreakdown) {
+    val t = LocalTranslation.current
     val color = when {
         breakdown.score >= 20 -> SuccessGreen
         breakdown.score >= 15 -> WarningAmber
@@ -658,7 +682,7 @@ private fun BreakdownCard(breakdown: ScoreBreakdown) {
                 Text(breakdown.category,
                     style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(Spacing.sm))
-                Text("${breakdown.score}/25",
+                Text("${breakdown.score}${t.scoreDivider}",
                     style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold,
                     color = color)
             }

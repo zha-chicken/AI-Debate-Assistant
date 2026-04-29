@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.aidebate.domain.model.FallacyReference
 import com.aidebate.domain.model.FallacyResult
+import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.delay
@@ -37,20 +38,21 @@ fun FallacyDetectorScreen(
     viewModel: FallacyDetectorViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val t = LocalTranslation.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Fallacy Detector", fontWeight = FontWeight.Bold) },
+                title = { Text(t.fallacyDetectorTitle, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, t.back)
                     }
                 },
                 actions = {
                     // Reference guide toggle
                     IconButton(onClick = { viewModel.toggleReference() }) {
-                        Icon(Icons.Filled.MenuBook, "Reference Guide")
+                        Icon(Icons.Filled.MenuBook, t.referenceGuide)
                     }
                 }
             )
@@ -91,13 +93,14 @@ private fun MainContent(
     uiState: FallacyDetectorUiState,
     viewModel: FallacyDetectorViewModel
 ) {
+    val t = LocalTranslation.current
     Column(
         modifier = Modifier.fillMaxSize().padding(Spacing.lg).verticalScroll(rememberScrollState())
     ) {
-        Text("Detect Logical Fallacies",
+        Text(t.detectFallacies,
             style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(Spacing.xs))
-        Text("Paste or type an argument to scan for logical fallacies using AI.",
+        Text(t.fallacyDetectorSub,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
         Spacer(Modifier.height(Spacing.xl))
@@ -106,8 +109,8 @@ private fun MainContent(
             value = uiState.inputText,
             onValueChange = { viewModel.onTextChanged(it) },
             modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp, max = 300.dp),
-            label = { Text("Argument text to analyze") },
-            placeholder = { Text("Paste or type an argument here...") },
+            label = { Text(t.argumentLabel) },
+            placeholder = { Text(t.argumentPlaceholder) },
             minLines = 6,
             shape = Radii.mediumShape
         )
@@ -127,11 +130,11 @@ private fun MainContent(
                     strokeWidth = 2.dp
                 )
                 Spacer(Modifier.width(Spacing.sm))
-                Text("Analyzing...")
+                Text(t.analyzing)
             } else {
                 Icon(Icons.Filled.Search, null)
                 Spacer(Modifier.width(Spacing.sm))
-                Text("Analyze for Fallacies")
+                Text(t.analyzeForFallacies)
             }
         }
 
@@ -154,7 +157,7 @@ private fun MainContent(
                         Row(Modifier.fillMaxWidth().padding(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Filled.CheckCircle, null, tint = SuccessGreen)
                             Spacer(Modifier.width(Spacing.md))
-                            Text("No logical fallacies detected!",
+                            Text(t.noFallacies,
                                 style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                         }
                     }
@@ -177,18 +180,19 @@ private fun MainContent(
 
 @Composable
 private fun ResultsHeader(count: Int, onClear: () -> Unit) {
+    val t = LocalTranslation.current
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Results", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(t.results, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             if (count > 0) {
                 Spacer(Modifier.width(Spacing.sm))
                 Surface(shape = Radii.smallShape, color = MaterialTheme.colorScheme.primaryContainer) {
                     Text(
-                        " $count found ",
+                        String.format(t.fallaciesFound, count),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp)
@@ -198,7 +202,7 @@ private fun ResultsHeader(count: Int, onClear: () -> Unit) {
         }
         TextButton(onClick = onClear) {
             Icon(Icons.Filled.Clear, null, Modifier.size(16.dp))
-            Text("Clear")
+            Text(t.clear)
         }
     }
 }
@@ -209,6 +213,7 @@ private fun ResultsHeader(count: Int, onClear: () -> Unit) {
 
 @Composable
 private fun StaggeredResultCard(result: FallacyResult, index: Int, delayMs: Long) {
+    val t = LocalTranslation.current
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         delay(delayMs)
@@ -257,7 +262,11 @@ private fun StaggeredResultCard(result: FallacyResult, index: Int, delayMs: Long
                         color = severityColor.copy(alpha = 0.15f)
                     ) {
                         Text(
-                            severity,
+                            when (severity) {
+                                "High" -> t.severityHigh
+                                "Medium" -> t.severityMedium
+                                else -> t.severityLow
+                            },
                             modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Medium,
@@ -318,17 +327,18 @@ private fun ReferenceGuidePanel(
     onSelect: (FallacyReference?) -> Unit,
     onClose: () -> Unit
 ) {
+    val t = LocalTranslation.current
     Column(modifier = Modifier.fillMaxSize().padding(Spacing.lg)) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Fallacy Reference Guide",
+            Text(t.referenceGuide,
                 style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Close") }
+            IconButton(onClick = onClose) { Icon(Icons.Default.Close, t.close) }
         }
-        Text("${references.size} common logical fallacies",
+        Text(String.format(t.referenceSubtitle, references.size),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
         Spacer(Modifier.height(Spacing.md))

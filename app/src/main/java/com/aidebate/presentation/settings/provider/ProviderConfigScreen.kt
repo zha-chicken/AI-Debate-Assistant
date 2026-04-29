@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aidebate.presentation.localization.LocalTranslation
 
 @Composable
 fun ProviderConfigScreen(
@@ -28,6 +29,7 @@ fun ProviderConfigScreen(
     viewModel: ProviderConfigViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val t = LocalTranslation.current
     var apiKeyVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(providerName) { viewModel.initialize(providerName) }
@@ -43,7 +45,7 @@ fun ProviderConfigScreen(
                 title = { Text(uiState.providerName) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, t.back)
                     }
                 }
             )
@@ -71,8 +73,8 @@ fun ProviderConfigScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Enable Provider", fontWeight = FontWeight.SemiBold)
-                            Text("Turn on to use this AI in debates",
+                            Text(t.enableProvider, fontWeight = FontWeight.SemiBold)
+                            Text(t.enableProviderSubtitle,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                         }
@@ -84,12 +86,12 @@ fun ProviderConfigScreen(
                 }
 
                 // API Key
-                Text("API Key", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(t.apiKey, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 OutlinedTextField(
                     value = uiState.apiKey,
                     onValueChange = { viewModel.onApiKeyChanged(it) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("API Key") },
+                    label = { Text(t.apiKey) },
                     visualTransformation = if (apiKeyVisible) VisualTransformation.None
                     else PasswordVisualTransformation(),
                     trailingIcon = {
@@ -97,7 +99,7 @@ fun ProviderConfigScreen(
                             Icon(
                                 if (apiKeyVisible) Icons.Default.VisibilityOff
                                 else Icons.Default.Visibility,
-                                "Toggle visibility"
+                                t.toggleVisibility
                             )
                         }
                     },
@@ -107,26 +109,26 @@ fun ProviderConfigScreen(
                 )
 
                 // Model name
-                Text("Model", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(t.model, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 OutlinedTextField(
                     value = uiState.modelName,
                     onValueChange = { viewModel.onModelChanged(it) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Model name") },
+                    label = { Text(t.modelName) },
                     placeholder = { Text(getDefaultModel(providerName)) },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                // Base URL (shown for all providers)
+                // Base URL
                 AnimatedVisibility(visible = uiState.showBaseUrl) {
                     Column {
-                        Text("Base URL", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(t.baseUrl, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = uiState.baseUrl,
                             onValueChange = { viewModel.onBaseUrlChanged(it) },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Base URL") },
+                            label = { Text(t.baseUrl) },
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp)
                         )
@@ -148,7 +150,7 @@ fun ProviderConfigScreen(
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
-                        Text("Save Configuration", style = MaterialTheme.typography.titleMedium)
+                        Text(t.saveConfiguration, style = MaterialTheme.typography.titleMedium)
                     }
                 }
 
@@ -163,7 +165,7 @@ fun ProviderConfigScreen(
                     } else {
                         Icon(Icons.Default.NetworkCheck, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Test Connection")
+                        Text(t.testConnection)
                     }
                 }
 
@@ -180,7 +182,7 @@ fun ProviderConfigScreen(
                                 Icon(Icons.Default.CheckCircle,
                                     null, tint = MaterialTheme.colorScheme.tertiary)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Connection successful!",
+                                Text(t.connectionSuccessful,
                                     color = MaterialTheme.colorScheme.tertiary)
                             }
                         }
