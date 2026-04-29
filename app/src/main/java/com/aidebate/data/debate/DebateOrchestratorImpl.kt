@@ -135,15 +135,10 @@ class DebateOrchestratorImpl @Inject constructor(
 
     override suspend fun advanceAiTurn(): DebateTurn {
         val currentSession = _session.value ?: error("No active session")
-        val result = stateMachine?.advance()
-        if (result is DebateStateMachine.AdvanceResult.Completed) {
-            completeDebate(currentSession)
-            error("Debate already completed")
-        }
 
-        val nextResult = result as? DebateStateMachine.AdvanceResult.NextTurn
-            ?: error("Unexpected state")
-        val speakerRole = nextResult.speaker
+        // Use current speaker from state machine (the one WaitingForTap showed)
+        val speakerRole = stateMachine?.currentSpeakerState()
+            ?: error("No active state machine")
         val provider = if (speakerRole == SpeakerRole.AI_PROPOSITION)
             currentSession.providerProposition else currentSession.providerOpposition
         val model = if (speakerRole == SpeakerRole.AI_PROPOSITION)
@@ -166,7 +161,7 @@ class DebateOrchestratorImpl @Inject constructor(
                 }
             }
 
-            // Check what's next
+            // Advance state machine to determine what comes next
             val nextState = stateMachine?.advance()
             when (nextState) {
                 is DebateStateMachine.AdvanceResult.Completed -> {
