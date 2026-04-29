@@ -21,6 +21,7 @@ import com.aidebate.presentation.topic.TopicSelectionScreen
 import com.aidebate.presentation.argumentmap.ArgumentMapScreen
 import com.aidebate.presentation.rebuttal.RebuttalTrainerScreen
 import com.aidebate.presentation.fallacy.FallacyDetectorScreen
+import com.aidebate.presentation.facetoface.FaceToFaceScreen
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
@@ -47,6 +48,9 @@ sealed class Screen(val route: String) {
         fun createRoute() = "rebuttal_trainer"
     }
     data object FallacyDetector : Screen("fallacy_detector")
+    data object FaceToFace : Screen("facetoface/{sessionId}") {
+        fun createRoute(sessionId: String) = "facetoface/$sessionId"
+    }
 }
 
 @Composable
@@ -82,7 +86,8 @@ fun AppNavHost(
                     navController.navigate(Screen.TopicSelection.route + "?for=argument_map")
                 },
                 onRebuttalTrainer = { navController.navigate(Screen.RebuttalTrainer.route) },
-                onFallacyDetector = { navController.navigate(Screen.FallacyDetector.route) }
+                onFallacyDetector = { navController.navigate(Screen.FallacyDetector.route) },
+                onFaceToFace = { navController.navigate(Screen.TopicSelection.route) }
             )
         }
 
@@ -104,6 +109,11 @@ fun AppNavHost(
                 topicId = topicId,
                 onStartDebate = { sessionId ->
                     navController.navigate(Screen.Debate.createRoute(sessionId)) {
+                        popUpTo(Screen.Home.route)
+                    }
+                },
+                onStartFaceToFace = { sessionId ->
+                    navController.navigate(Screen.FaceToFace.createRoute(sessionId)) {
                         popUpTo(Screen.Home.route)
                     }
                 },
@@ -198,6 +208,20 @@ fun AppNavHost(
 
         composable(Screen.FallacyDetector.route) {
             FallacyDetectorScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.FaceToFace.route,
+            arguments = listOf(navArgument("sessionId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
+            FaceToFaceScreen(
+                sessionId = sessionId,
+                onViewResult = { sId ->
+                    navController.navigate(Screen.DebateResult.createRoute(sId))
+                },
                 onBack = { navController.popBackStack() }
             )
         }

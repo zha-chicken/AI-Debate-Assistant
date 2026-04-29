@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.AiProvider
@@ -34,6 +35,7 @@ import com.aidebate.presentation.theme.*
 fun DebateSetupScreen(
     topicId: String,
     onStartDebate: (String) -> Unit,
+    onStartFaceToFace: (String) -> Unit = {},
     onBack: () -> Unit,
     viewModel: DebateSetupViewModel = hiltViewModel()
 ) {
@@ -43,9 +45,14 @@ fun DebateSetupScreen(
     LaunchedEffect(topicId) { viewModel.initialize(topicId) }
 
     val sessionId = viewModel.sessionId.collectAsState()
+    val f2fSessionId = viewModel.f2fSessionId.collectAsState()
 
     LaunchedEffect(sessionId.value) {
         sessionId.value?.let { onStartDebate(it) }
+    }
+
+    LaunchedEffect(f2fSessionId.value) {
+        f2fSessionId.value?.let { onStartFaceToFace(it) }
     }
 
     Scaffold(
@@ -93,44 +100,87 @@ fun DebateSetupScreen(
                         onClick = { viewModel.onModeSelected(DebateMode.AI_VS_AI) },
                         modifier = Modifier.weight(1f)
                     )
-                }
-
-                // Debate Format
-                SectionLabel(t.format)
-                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                     ModeCard(
-                        title = t.structured,
-                        subtitle = t.structuredSubtitle,
-                        icon = Icons.Default.Segment,
-                        selected = uiState.selectedFormat == DebateFormat.STRUCTURED,
-                        onClick = { viewModel.onFormatSelected(DebateFormat.STRUCTURED) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ModeCard(
-                        title = t.freeFlow,
-                        subtitle = t.freeFlowSubtitle,
-                        icon = Icons.Default.Chat,
-                        selected = uiState.selectedFormat == DebateFormat.FREE_FLOW,
-                        onClick = { viewModel.onFormatSelected(DebateFormat.FREE_FLOW) },
+                        title = t.faceToFaceLabel,
+                        icon = Icons.Default.Forum,
+                        selected = uiState.selectedMode == DebateMode.USER_VS_USER,
+                        onClick = { viewModel.onModeSelected(DebateMode.USER_VS_USER) },
                         modifier = Modifier.weight(1f)
                     )
                 }
 
-                // AI Difficulty
-                SectionLabel(t.aiDifficulty)
-                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                    DebateDifficulty.entries.forEach { difficulty ->
-                        val label = when (difficulty) {
-                            DebateDifficulty.EASY -> t.easy
-                            DebateDifficulty.MEDIUM -> t.medium
-                            DebateDifficulty.HARD -> t.hard
-                        }
-                        ModeCard(
-                            title = label,
-                            selected = uiState.selectedDifficulty == difficulty,
-                            onClick = { viewModel.onDifficultySelected(difficulty) },
-                            modifier = Modifier.weight(1f)
+                // Face-to-Face description (only for F2F)
+                AnimatedVisibility(visible = uiState.selectedMode == DebateMode.USER_VS_USER) {
+                    Card(
+                        shape = Radii.mediumShape,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
                         )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(Spacing.lg),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Default.People, null,
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.height(Spacing.sm))
+                            Text(
+                                t.f2fSubtitle,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+
+                // Debate Format (hidden for F2F — always structured)
+                AnimatedVisibility(visible = uiState.selectedMode != DebateMode.USER_VS_USER) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                        SectionLabel(t.format)
+                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                            ModeCard(
+                                title = t.structured,
+                                subtitle = t.structuredSubtitle,
+                                icon = Icons.Default.Segment,
+                                selected = uiState.selectedFormat == DebateFormat.STRUCTURED,
+                                onClick = { viewModel.onFormatSelected(DebateFormat.STRUCTURED) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            ModeCard(
+                                title = t.freeFlow,
+                                subtitle = t.freeFlowSubtitle,
+                                icon = Icons.Default.Chat,
+                                selected = uiState.selectedFormat == DebateFormat.FREE_FLOW,
+                                onClick = { viewModel.onFormatSelected(DebateFormat.FREE_FLOW) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
+                // AI Difficulty (hidden for F2F)
+                AnimatedVisibility(visible = uiState.selectedMode != DebateMode.USER_VS_USER) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                        SectionLabel(t.aiDifficulty)
+                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                            DebateDifficulty.entries.forEach { difficulty ->
+                                val label = when (difficulty) {
+                                    DebateDifficulty.EASY -> t.easy
+                                    DebateDifficulty.MEDIUM -> t.medium
+                                    DebateDifficulty.HARD -> t.hard
+                                }
+                                ModeCard(
+                                    title = label,
+                                    selected = uiState.selectedDifficulty == difficulty,
+                                    onClick = { viewModel.onDifficultySelected(difficulty) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -167,25 +217,28 @@ fun DebateSetupScreen(
                     }
                 }
 
-                // AI Provider for Proposition
-                ProviderSelector(
-                    label = t.aiForProposition,
-                    providers = uiState.enabledProviders,
-                    selectedProvider = uiState.providerProposition,
-                    selectedModel = uiState.modelProposition,
-                    onProviderSelected = { viewModel.onProviderSelected("proposition", it) },
-                    onModelChanged = { viewModel.onModelChanged("proposition", it) }
-                )
+                // AI Providers (hidden for F2F)
+                AnimatedVisibility(visible = uiState.selectedMode != DebateMode.USER_VS_USER) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
+                        ProviderSelector(
+                            label = t.aiForProposition,
+                            providers = uiState.enabledProviders,
+                            selectedProvider = uiState.providerProposition,
+                            selectedModel = uiState.modelProposition,
+                            onProviderSelected = { viewModel.onProviderSelected("proposition", it) },
+                            onModelChanged = { viewModel.onModelChanged("proposition", it) }
+                        )
 
-                // AI Provider for Opposition
-                ProviderSelector(
-                    label = t.aiForOpposition,
-                    providers = uiState.enabledProviders,
-                    selectedProvider = uiState.providerOpposition,
-                    selectedModel = uiState.modelOpposition,
-                    onProviderSelected = { viewModel.onProviderSelected("opposition", it) },
-                    onModelChanged = { viewModel.onModelChanged("opposition", it) }
-                )
+                        ProviderSelector(
+                            label = t.aiForOpposition,
+                            providers = uiState.enabledProviders,
+                            selectedProvider = uiState.providerOpposition,
+                            selectedModel = uiState.modelOpposition,
+                            onProviderSelected = { viewModel.onProviderSelected("opposition", it) },
+                            onModelChanged = { viewModel.onModelChanged("opposition", it) }
+                        )
+                    }
+                }
 
                 Spacer(Modifier.height(Spacing.sm))
 
@@ -198,7 +251,10 @@ fun DebateSetupScreen(
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = null)
                     Spacer(Modifier.width(Spacing.sm))
-                    Text(t.startDebate, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (uiState.selectedMode == DebateMode.USER_VS_USER) t.faceToFaceLabel else t.startDebate,
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 }
 
                 Spacer(Modifier.height(Spacing.xl))

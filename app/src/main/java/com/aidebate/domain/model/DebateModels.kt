@@ -2,7 +2,7 @@ package com.aidebate.domain.model
 
 import java.util.UUID
 
-enum class DebateMode { USER_VS_AI, AI_VS_AI }
+enum class DebateMode { USER_VS_AI, AI_VS_AI, USER_VS_USER }
 
 enum class DebateFormat { STRUCTURED, FREE_FLOW }
 

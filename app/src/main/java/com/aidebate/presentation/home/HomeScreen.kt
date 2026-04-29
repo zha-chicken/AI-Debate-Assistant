@@ -37,7 +37,8 @@ fun HomeScreen(
     onSettings: () -> Unit,
     onArgumentMap: () -> Unit = {},
     onRebuttalTrainer: () -> Unit = {},
-    onFallacyDetector: () -> Unit = {}
+    onFallacyDetector: () -> Unit = {},
+    onFaceToFace: () -> Unit = {}
 ) {
     val t = LocalTranslation.current
     Scaffold(
@@ -80,6 +81,16 @@ fun HomeScreen(
             )
             StaggeredCard(
                 index = 1,
+                title = t.faceToFace,
+                subtitle = t.faceToFaceSubtitle,
+                icon = Icons.Filled.Forum,
+                onClick = onFaceToFace,
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                accentColor = MaterialTheme.colorScheme.primary
+            )
+            StaggeredCard(
+                index = 2,
                 title = t.debateHistory,
                 subtitle = t.debateHistorySubtitle,
                 icon = Icons.Filled.History,
@@ -94,7 +105,7 @@ fun HomeScreen(
             // Preparation Tools
             SectionHeader(t.sectionPrepTools)
             StaggeredCard(
-                index = 2,
+                index = 3,
                 title = t.argumentMap,
                 subtitle = t.argumentMapSubtitle,
                 icon = Icons.Filled.AccountTree,
@@ -104,7 +115,7 @@ fun HomeScreen(
                 accentColor = MaterialTheme.colorScheme.tertiary
             )
             StaggeredCard(
-                index = 3,
+                index = 4,
                 title = t.rebuttalTrainer,
                 subtitle = t.rebuttalTrainerSubtitle,
                 icon = Icons.Filled.Timer,
@@ -114,7 +125,7 @@ fun HomeScreen(
                 accentColor = MaterialTheme.colorScheme.primary
             )
             StaggeredCard(
-                index = 4,
+                index = 5,
                 title = t.fallacyDetector,
                 subtitle = t.fallacyDetectorSubtitle,
                 icon = Icons.Filled.Search,
@@ -128,7 +139,7 @@ fun HomeScreen(
 
             // Settings
             StaggeredCard(
-                index = 5,
+                index = 6,
                 title = t.settings,
                 subtitle = t.settingsSubtitle,
                 icon = Icons.Filled.Settings,

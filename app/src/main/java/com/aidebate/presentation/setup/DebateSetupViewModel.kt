@@ -39,6 +39,9 @@ class DebateSetupViewModel @Inject constructor(
     private val _sessionId = MutableStateFlow<String?>(null)
     val sessionId: StateFlow<String?> = _sessionId.asStateFlow()
 
+    private val _f2fSessionId = MutableStateFlow<String?>(null)
+    val f2fSessionId: StateFlow<String?> = _f2fSessionId.asStateFlow()
+
     private var topicId: String = ""
 
     fun initialize(topicId: String) {
@@ -93,6 +96,10 @@ class DebateSetupViewModel @Inject constructor(
 
     fun startDebate() {
         val state = _uiState.value
+        if (state.selectedMode == DebateMode.USER_VS_USER) {
+            startF2FSession()
+            return
+        }
         val session = DebateSession(
             topicId = topicId,
             mode = state.selectedMode,
@@ -110,11 +117,24 @@ class DebateSetupViewModel @Inject constructor(
         }
     }
 
+    private fun startF2FSession() {
+        val session = DebateSession(
+            topicId = topicId,
+            mode = DebateMode.USER_VS_USER,
+            format = DebateFormat.STRUCTURED
+        )
+        viewModelScope.launch {
+            debateRepository.createSession(session)
+            _f2fSessionId.value = session.id
+        }
+    }
+
     private fun updateCanStart() {
         val state = _uiState.value
         _uiState.update {
             it.copy(
-                canStart = state.providerProposition != null && state.providerOpposition != null
+                canStart = state.selectedMode == DebateMode.USER_VS_USER ||
+                    (state.providerProposition != null && state.providerOpposition != null)
             )
         }
     }

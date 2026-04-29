@@ -23,6 +23,8 @@ data class Translation(
     val fallacyDetectorSubtitle: String,
     val settings: String,
     val settingsSubtitle: String,
+    val faceToFace: String,
+    val faceToFaceSubtitle: String,
 
     // === Settings ===
     val settingsTitle: String,
@@ -89,6 +91,17 @@ data class Translation(
     val customTopicDialogTitle: String,
     val yourDebateQuestion: String,
     val add: String,
+
+    // === Face-to-Face ===
+    val faceToFaceLabel: String,
+    val player1: String,
+    val player2: String,
+    val player1Turn: String,
+    val player2Turn: String,
+    val passToPlayer: String, // %1$s = player name
+    val f2fSubtitle: String,
+    val judgeResults: String,
+    val f2fComplete: String,
 
     // === Debate Screen ===
     val debateTitle: String,
@@ -240,6 +253,8 @@ val EnglishTranslation = Translation(
     fallacyDetectorSubtitle = "Identify logical fallacies in arguments",
     settings = "Settings",
     settingsSubtitle = "Configure AI providers and models",
+    faceToFace = "Face-to-Face",
+    faceToFaceSubtitle = "Two players, one device, AI judges",
 
     // Settings
     settingsTitle = "Settings",
@@ -306,6 +321,17 @@ val EnglishTranslation = Translation(
     customTopicDialogTitle = "Custom Topic",
     yourDebateQuestion = "Your debate question",
     add = "Add",
+
+    // Face-to-Face
+    faceToFaceLabel = "Face-to-Face",
+    player1 = "Player 1",
+    player2 = "Player 2",
+    player1Turn = "Player 1's Turn",
+    player2Turn = "Player 2's Turn",
+    passToPlayer = "Pass to %1\$s",
+    f2fSubtitle = "Two players, one device, AI judges",
+    judgeResults = "Judge Results",
+    f2fComplete = "Face-to-Face Complete!",
 
     // Debate Screen
     debateTitle = "Debate",
@@ -457,6 +483,8 @@ val ChineseTranslation = Translation(
     fallacyDetectorSubtitle = "识别论证中的逻辑谬误",
     settings = "设置",
     settingsSubtitle = "配置AI提供商和模型",
+    faceToFace = "面对面辩论",
+    faceToFaceSubtitle = "两位玩家，一台设备，AI 评判",
 
     // Settings
     settingsTitle = "设置",
@@ -523,6 +551,17 @@ val ChineseTranslation = Translation(
     customTopicDialogTitle = "自定义话题",
     yourDebateQuestion = "辩论问题",
     add = "添加",
+
+    // Face-to-Face
+    faceToFaceLabel = "面对面辩论",
+    player1 = "玩家 1",
+    player2 = "玩家 2",
+    player1Turn = "轮到玩家 1",
+    player2Turn = "轮到玩家 2",
+    passToPlayer = "传递给 %1\$s",
+    f2fSubtitle = "两位玩家，一台设备，AI 评判",
+    judgeResults = "查看评判结果",
+    f2fComplete = "面对面辩论结束！",
 
     // Debate Screen
     debateTitle = "辩论",
