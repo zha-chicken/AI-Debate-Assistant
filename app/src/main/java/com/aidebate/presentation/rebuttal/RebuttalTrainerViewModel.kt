@@ -5,7 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.aidebate.data.repository.RebuttalTrainerRepositoryImpl
 import com.aidebate.domain.model.*
 import com.aidebate.domain.repository.RebuttalTrainerRepository
+import com.aidebate.domain.repository.SettingsRepository
 import com.aidebate.domain.repository.TopicRepository
+import com.aidebate.presentation.localization.KEY_LANGUAGE
+import com.aidebate.presentation.localization.LANG_ENGLISH
+import com.aidebate.presentation.localization.translate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -46,7 +50,8 @@ enum class TrainerPhase {
 @HiltViewModel
 class RebuttalTrainerViewModel @Inject constructor(
     private val repository: RebuttalTrainerRepository,
-    private val topicRepository: TopicRepository
+    private val topicRepository: TopicRepository,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RebuttalTrainerUiState())
@@ -56,7 +61,12 @@ class RebuttalTrainerViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            topicRepository.getAllTopics().collect { topics ->
+            combine(
+                topicRepository.getAllTopics(),
+                settingsRepository.observeString(KEY_LANGUAGE).map { it ?: LANG_ENGLISH }
+            ) { topics, lang ->
+                topics.map { it.translate(lang) }
+            }.collect { topics ->
                 _uiState.update { it.copy(topics = topics) }
             }
         }

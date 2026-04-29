@@ -3,7 +3,11 @@ package com.aidebate.presentation.topic
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aidebate.domain.model.DebateTopic
+import com.aidebate.domain.repository.SettingsRepository
 import com.aidebate.domain.repository.TopicRepository
+import com.aidebate.presentation.localization.KEY_LANGUAGE
+import com.aidebate.presentation.localization.LANG_ENGLISH
+import com.aidebate.presentation.localization.translate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -18,7 +22,8 @@ data class TopicSelectionUiState(
 
 @HiltViewModel
 class TopicSelectionViewModel @Inject constructor(
-    private val topicRepository: TopicRepository
+    private val topicRepository: TopicRepository,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TopicSelectionUiState(isLoading = true))
@@ -32,7 +37,12 @@ class TopicSelectionViewModel @Inject constructor(
 
     fun loadTopics() {
         viewModelScope.launch {
-            topicRepository.getAllTopics().collect { topics ->
+            combine(
+                topicRepository.getAllTopics(),
+                settingsRepository.observeString(KEY_LANGUAGE).map { it ?: LANG_ENGLISH }
+            ) { topics, lang ->
+                topics.map { it.translate(lang) }
+            }.collect { topics ->
                 val byCategory = topics.groupBy { it.category.ifBlank { "General" } }
                     .toSortedMap()
                 _uiState.value = TopicSelectionUiState(
