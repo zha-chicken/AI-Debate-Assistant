@@ -259,8 +259,8 @@ data class Translation(
 
 val EnglishTranslation = Translation(
     // HomeScreen
-    appTitle = "AI Debate",
-    welcomeTitle = "Welcome to AI Debate",
+    appTitle = "Rhetorix",
+    welcomeTitle = "Welcome to Rhetorix",
     welcomeSubtitle = "Challenge AI or watch two AIs debate each other",
     sectionDebateActions = "Debate Actions",
     sectionPrepTools = "Preparation Tools",
@@ -392,7 +392,7 @@ val EnglishTranslation = Translation(
     // Debate Result
     debateResult = "Debate Result",
     share = "Share",
-    shareResult = "AI Debate Result\n\n%1\$s",
+    shareResult = "Rhetorix Result\n\n%1\$s",
     winner = "Winner",
     noWinnerDeclared = "No winner declared",
     keyMoments = "Key Moments",
@@ -512,8 +512,8 @@ val EnglishTranslation = Translation(
 
 val ChineseTranslation = Translation(
     // HomeScreen
-    appTitle = "AI 辩论",
-    welcomeTitle = "欢迎使用 AI 辩论",
+    appTitle = "Rhetorix",
+    welcomeTitle = "欢迎使用 Rhetorix",
     welcomeSubtitle = "挑战AI，或观看两个AI相互辩论",
     sectionDebateActions = "辩论操作",
     sectionPrepTools = "准备工具",
@@ -645,7 +645,7 @@ val ChineseTranslation = Translation(
     // Debate Result
     debateResult = "辩论结果",
     share = "分享",
-    shareResult = "AI 辩论结果\n\n%1\$s",
+    shareResult = "Rhetorix 结果\n\n%1\$s",
     winner = "胜者",
     noWinnerDeclared = "未宣布胜者",
     keyMoments = "关键时刻",
