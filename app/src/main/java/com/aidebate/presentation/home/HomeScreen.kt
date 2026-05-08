@@ -85,6 +85,7 @@ fun HomeScreen(
     onRebuttalTrainer: () -> Unit = {},
     onFallacyDetector: () -> Unit = {},
     onFaceToFace: () -> Unit = {},
+    onTools: () -> Unit = onArgumentMap,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val t = LocalTranslation.current
@@ -119,7 +120,7 @@ fun HomeScreen(
                 HomeBottomBar(
                     onHome = {},
                     onHistory = onHistory,
-                    onTools = onArgumentMap,
+                    onTools = onTools,
                     onProfile = onSettings,
                 )
             }

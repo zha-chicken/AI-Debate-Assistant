@@ -19,6 +19,7 @@ import com.aidebate.presentation.settings.SettingsScreen
 import com.aidebate.presentation.settings.provider.ProviderConfigScreen
 import com.aidebate.presentation.setup.DebateSetupScreen
 import com.aidebate.presentation.topic.TopicSelectionScreen
+import com.aidebate.presentation.tools.ToolsScreen
 import com.aidebate.presentation.argumentmap.ArgumentMapScreen
 import com.aidebate.presentation.rebuttal.RebuttalTrainerScreen
 import com.aidebate.presentation.fallacy.FallacyDetectorScreen
@@ -37,6 +38,7 @@ sealed class Screen(val route: String) {
         fun createRoute(sessionId: String) = "debate_result/$sessionId"
     }
     data object History : Screen("history")
+    data object Tools : Screen("tools")
     data object Settings : Screen("settings")
     data object ProviderConfig : Screen("provider_config/{providerName}") {
         fun createRoute(providerName: String) = "provider_config/$providerName"
@@ -90,7 +92,8 @@ fun AppNavHost(
                 },
                 onRebuttalTrainer = { navController.navigate(Screen.RebuttalTrainer.route) },
                 onFallacyDetector = { navController.navigate(Screen.FallacyDetector.route) },
-                onFaceToFace = { navController.navigate(Screen.TopicSelection.route) }
+                onFaceToFace = { navController.navigate(Screen.TopicSelection.route) },
+                onTools = { navController.navigate(Screen.Tools.route) }
             )
         }
 
@@ -158,6 +161,13 @@ fun AppNavHost(
                 onRebuttalSelected = { sessionId ->
                     navController.navigate(Screen.RebuttalTrainer.createRoute(sessionId))
                 },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Tools.route) {
+            ToolsScreen(
+                onFallacyDetector = { navController.navigate(Screen.FallacyDetector.route) },
                 onBack = { navController.popBackStack() }
             )
         }

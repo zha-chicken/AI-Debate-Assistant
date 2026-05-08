@@ -33,6 +33,11 @@ data class Translation(
     val debatesTab: String,
     val toolsTab: String,
     val profileTab: String,
+    val toolsTitle: String,
+    val toolsSubtitle: String,
+    val hallucinationDetector: String,
+    val hallucinationDetectorSubtitle: String,
+    val openExternalTool: String,
 
     // === Settings ===
     val settingsTitle: String,
@@ -281,6 +286,11 @@ val EnglishTranslation = Translation(
     debatesTab = "Debates",
     toolsTab = "Tools",
     profileTab = "Profile",
+    toolsTitle = "Tools",
+    toolsSubtitle = "Analysis tools for cleaner arguments and safer AI output",
+    hallucinationDetector = "AI Hallucination Detector",
+    hallucinationDetectorSubtitle = "Open GPTZero to check AI-generated content for hallucinations",
+    openExternalTool = "Open external tool",
 
     // Settings
     settingsTitle = "Settings",
@@ -529,6 +539,11 @@ val ChineseTranslation = Translation(
     debatesTab = "辩论",
     toolsTab = "工具",
     profileTab = "我的",
+    toolsTitle = "工具",
+    toolsSubtitle = "用于分析论证和检查 AI 输出的工具",
+    hallucinationDetector = "幻觉检测",
+    hallucinationDetectorSubtitle = "打开 GPTZero，检测 AI 生成内容中的幻觉问题",
+    openExternalTool = "打开外部工具",
 
     // Settings
     settingsTitle = "设置",
