@@ -100,6 +100,7 @@ data class DebateSessionSummary(
     val mode: DebateMode,
     val format: DebateFormat,
     val status: SessionStatus,
+    val userSide: SpeakerRole? = null,
     val turnCount: Int,
     val createdAt: Long
 )

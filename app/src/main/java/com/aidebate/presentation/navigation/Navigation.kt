@@ -11,6 +11,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.aidebate.presentation.debate.DebateScreen
+import com.aidebate.presentation.donation.DonationScreen
 import com.aidebate.presentation.history.DebateHistoryScreen
 import com.aidebate.presentation.home.HomeScreen
 import com.aidebate.presentation.result.DebateResultScreen
@@ -51,6 +52,7 @@ sealed class Screen(val route: String) {
     data object FaceToFace : Screen("facetoface/{sessionId}") {
         fun createRoute(sessionId: String) = "facetoface/$sessionId"
     }
+    data object Donation : Screen("donation")
 }
 
 @Composable
@@ -82,6 +84,7 @@ fun AppNavHost(
                 onNewDebate = { navController.navigate(Screen.TopicSelection.route) },
                 onHistory = { navController.navigate(Screen.History.route) },
                 onSettings = { navController.navigate(Screen.Settings.route) },
+                onDonation = { navController.navigate(Screen.Donation.route) },
                 onArgumentMap = {
                     navController.navigate(Screen.TopicSelection.route + "?for=argument_map")
                 },
@@ -164,7 +167,8 @@ fun AppNavHost(
                 onProviderSelected = { providerName ->
                     navController.navigate(Screen.ProviderConfig.createRoute(providerName))
                 },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onDonation = { navController.navigate(Screen.Donation.route) }
             )
         }
 
@@ -222,6 +226,12 @@ fun AppNavHost(
                 onViewResult = { sId ->
                     navController.navigate(Screen.DebateResult.createRoute(sId))
                 },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Donation.route) {
+            DonationScreen(
                 onBack = { navController.popBackStack() }
             )
         }

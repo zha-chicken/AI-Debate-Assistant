@@ -84,6 +84,7 @@ fun DebateResultEntity.toDomain() = DebateResult(
 fun SessionSummaryTuple.toDomain() = DebateSessionSummary(
     id = id, topicTitle = topicTitle, mode = DebateMode.valueOf(mode),
     format = DebateFormat.valueOf(format), status = SessionStatus.valueOf(status),
+    userSide = userSide?.let { SpeakerRole.valueOf(it) },
     turnCount = turnCount, createdAt = createdAt
 )
 

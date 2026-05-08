@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,82 +35,80 @@ fun TopicSelectionScreen(
     var showCustomDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(t.chooseTopic) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, t.back)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showCustomDialog = true }) {
-                        Icon(Icons.Default.Add, t.customTopic)
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(Spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
-        ) {
-            // Search bar
-            item(key = "search") {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(t.searchTopics) },
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Clear, t.clear)
-                            }
+    AiBackdrop {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(t.chooseTopic) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, t.back)
                         }
                     },
-                    singleLine = true,
-                    shape = Radii.mediumShape
+                    actions = {
+                        IconButton(onClick = { showCustomDialog = true }) {
+                            Icon(Icons.Default.Add, t.customTopic)
+                        }
+                    },
+                    colors = glassTopAppBarColors()
                 )
-                Spacer(Modifier.height(Spacing.sm))
             }
-
-            // Custom topic shortcut
-            item(key = "customTopic") {
-                OutlinedCard(
-                    onClick = { showCustomDialog = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = Radii.mediumShape,
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        width = 2.dp,
-                        brush = androidx.compose.ui.graphics.SolidColor(
-                            MaterialTheme.colorScheme.primary
-                        )
+        ) { padding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+            ) {
+                // Search bar
+                item(key = "search") {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(t.searchTopics) },
+                        leadingIcon = { Icon(Icons.Default.Search, null) },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Clear, t.clear)
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = Radii.mediumShape,
+                        colors = glassTextFieldColors()
                     )
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
-                        verticalAlignment = Alignment.CenterVertically
+                    Spacer(Modifier.height(Spacing.sm))
+                }
+
+                // Custom topic shortcut
+                item(key = "customTopic") {
+                    GlassCard(
+                        onClick = { showCustomDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        accent = MaterialTheme.colorScheme.primary
                     ) {
-                        Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(Spacing.md))
-                        Column {
-                            Text(t.writeYourOwnTopic,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary)
-                            Text(t.customTopicHint,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(Spacing.md))
+                            Column {
+                                Text(t.writeYourOwnTopic,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface)
+                                Text(t.customTopicHint,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            }
                         }
                     }
                 }
-            }
 
             // Category chips
             if (uiState.categories.isNotEmpty()) {
@@ -178,6 +177,7 @@ fun TopicSelectionScreen(
             }
         }
     }
+    }
 
     // Custom topic dialog
     if (showCustomDialog) {
@@ -192,7 +192,8 @@ fun TopicSelectionScreen(
                     label = { Text(t.yourDebateQuestion) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2,
-                    shape = Radii.mediumShape
+                    shape = Radii.mediumShape,
+                    colors = glassTextFieldColors()
                 )
             },
             confirmButton = {
@@ -219,13 +220,10 @@ private fun TopicCard(
     topic: com.aidebate.domain.model.DebateTopic,
     onClick: () -> Unit
 ) {
-    Card(
+    GlassCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = Radii.mediumShape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
+        accent = MaterialTheme.colorScheme.primary
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(Spacing.lg),

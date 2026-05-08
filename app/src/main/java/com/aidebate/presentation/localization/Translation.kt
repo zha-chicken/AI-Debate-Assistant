@@ -25,6 +25,14 @@ data class Translation(
     val settingsSubtitle: String,
     val faceToFace: String,
     val faceToFaceSubtitle: String,
+    val debateCount: String,
+    val winRate: String,
+    val winStreak: String,
+    val donate: String,
+    val homeTab: String,
+    val debatesTab: String,
+    val toolsTab: String,
+    val profileTab: String,
 
     // === Settings ===
     val settingsTitle: String,
@@ -87,7 +95,7 @@ data class Translation(
     val clear: String,
     val writeYourOwnTopic: String,
     val customTopicHint: String,
-    val noTopicsMatch: String, // %1$s = search query
+    val noTopicsMatch: String,
     val customTopicDialogTitle: String,
     val yourDebateQuestion: String,
     val add: String,
@@ -98,7 +106,7 @@ data class Translation(
     val player2: String,
     val player1Turn: String,
     val player2Turn: String,
-    val passToPlayer: String, // %1$s = player name
+    val passToPlayer: String,
     val f2fSubtitle: String,
     val judgeResults: String,
     val f2fComplete: String,
@@ -108,9 +116,9 @@ data class Translation(
     val phaseOpening: String,
     val phaseRebuttal: String,
     val phaseClosing: String,
-    val tapToSeeResponse: String, // %1$s = provider name
+    val tapToSeeResponse: String,
     val debateComplete: String,
-    val winnerLabel: String, // %1$s = winner name
+    val winnerLabel: String,
     val viewFullResult: String,
     val judgingInProgress: String,
     val wouldYouLikeJudge: String,
@@ -121,20 +129,20 @@ data class Translation(
     val retry: String,
     val writeArgument: String,
     val send: String,
-    val constructingArgument: String, // %1$s = role name
+    val constructingArgument: String,
 
     // === Debate Result ===
     val debateResult: String,
     val share: String,
-    val shareResult: String, // %1$s = result text
+    val shareResult: String,
     val winner: String,
     val noWinnerDeclared: String,
     val keyMoments: String,
     val ellipsis: String,
     val transcript: String,
     val backToHome: String,
-    val resultTopic: String, // %1$s = topic title
-    val resultWinner: String, // %1$s = winner name
+    val resultTopic: String,
+    val resultWinner: String,
 
     // === History ===
     val history: String,
@@ -145,14 +153,14 @@ data class Translation(
     val deleteConfirmTitle: String,
     val delete: String,
     val cancel: String,
-    val bestScore: String, // %1$d = score
-    val attemptCount: String, // %1$d = count
-    val turns: String, // %1$d = turn count
+    val bestScore: String,
+    val attemptCount: String,
+    val turns: String,
     val back: String,
 
     // === Argument Map ===
     val argumentMapTitle: String,
-    val argumentCount: String, // %1$d = count
+    val argumentCount: String,
     val regenerate: String,
     val addProArgument: String,
     val addConArgument: String,
@@ -181,10 +189,10 @@ data class Translation(
     val analyzing: String,
     val analyzeForFallacies: String,
     val results: String,
-    val fallaciesFound: String, // %1$d = count
+    val fallaciesFound: String,
     val noFallacies: String,
     val referenceGuide: String,
-    val referenceSubtitle: String, // %1$d = count
+    val referenceSubtitle: String,
     val close: String,
     val severityHigh: String,
     val severityMedium: String,
@@ -196,7 +204,7 @@ data class Translation(
     val selectTopicSub: String,
     val difficulty: String,
     val timeLimit: String,
-    val timeSec: String, // %1$d = seconds
+    val timeSec: String,
     val generatingArgument: String,
     val startTraining: String,
     val yourArgument: String,
@@ -209,7 +217,7 @@ data class Translation(
     val analyzingRebuttal: String,
     val scoreCard: String,
     val totalScore: String,
-    val scoreOutOf: String, // %1$d = score
+    val scoreOutOf: String,
     val gradeA: String,
     val gradeB: String,
     val gradeC: String,
@@ -230,8 +238,18 @@ data class Translation(
     val limit: String,
     val newRound: String,
     val retrySame: String,
-    val scoreDivider: String, // "/25"
+    val scoreDivider: String,
     val dismissError: String,
+
+    // === Donation ===
+    val supportDevelopment: String,
+    val supportSubtitle: String,
+    val donationTitle: String,
+    val donationSubtitle: String,
+    val scanToDonate: String,
+    val donationThankYou: String,
+    val donationNote: String,
+    val donationQrCode: String,
 )
 
 val EnglishTranslation = Translation(
@@ -255,6 +273,14 @@ val EnglishTranslation = Translation(
     settingsSubtitle = "Configure AI providers and models",
     faceToFace = "Face-to-Face",
     faceToFaceSubtitle = "Two players, one device, AI judges",
+    debateCount = "Debates",
+    winRate = "Win Rate",
+    winStreak = "Win Streak",
+    donate = "Donate",
+    homeTab = "Home",
+    debatesTab = "Debates",
+    toolsTab = "Tools",
+    profileTab = "Profile",
 
     // Settings
     settingsTitle = "Settings",
@@ -462,6 +488,16 @@ val EnglishTranslation = Translation(
     retrySame = "Retry Same",
     scoreDivider = "/25",
     dismissError = "Dismiss",
+
+    // Donation
+    supportDevelopment = "Support Development",
+    supportSubtitle = "Support the app with a donation",
+    donationTitle = "Support",
+    donationSubtitle = "If you find this app useful, consider donating!",
+    scanToDonate = "Scan with WeChat or Alipay",
+    donationThankYou = "Thank you for your support!",
+    donationNote = "All features are free. Donations help keep the app running.",
+    donationQrCode = "Donation QR Code",
 )
 
 val ChineseTranslation = Translation(
@@ -485,6 +521,14 @@ val ChineseTranslation = Translation(
     settingsSubtitle = "配置AI提供商和模型",
     faceToFace = "面对面辩论",
     faceToFaceSubtitle = "两位玩家，一台设备，AI 评判",
+    debateCount = "辩论",
+    winRate = "胜率",
+    winStreak = "连胜",
+    donate = "赞助",
+    homeTab = "首页",
+    debatesTab = "辩论",
+    toolsTab = "工具",
+    profileTab = "我的",
 
     // Settings
     settingsTitle = "设置",
@@ -692,4 +736,14 @@ val ChineseTranslation = Translation(
     retrySame = "重试相同",
     scoreDivider = "/25",
     dismissError = "关闭",
+
+    // Donation
+    supportDevelopment = "赞助开发",
+    supportSubtitle = "赞助应用开发",
+    donationTitle = "赞助支持",
+    donationSubtitle = "如果您觉得这个应用有用，请考虑赞助！",
+    scanToDonate = "使用微信或支付宝扫描",
+    donationThankYou = "感谢您的支持！",
+    donationNote = "所有功能均免费。您的赞助有助于维持应用的运行。",
+    donationQrCode = "赞助二维码",
 )

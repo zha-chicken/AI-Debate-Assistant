@@ -12,18 +12,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.AiProvider
 import com.aidebate.domain.model.ProviderConfig
 import com.aidebate.presentation.localization.*
-import com.aidebate.presentation.theme.Spacing
+import com.aidebate.presentation.theme.*
 
 @Composable
 fun SettingsScreen(
     onProviderSelected: (String) -> Unit,
     onBack: () -> Unit,
+    onDonation: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -31,78 +33,126 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) { viewModel.loadProviders() }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(t.settingsTitle) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, t.back)
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // === General Settings ===
-            item {
-                SectionHeader(t.sectionGeneral)
+    AiBackdrop {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(t.settingsTitle) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, t.back)
+                        }
+                    },
+                    colors = glassTopAppBarColors()
+                )
             }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            t.language,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilterChip(
-                                selected = uiState.currentLanguage == LANG_ENGLISH,
-                                onClick = { viewModel.setLanguage(LANG_ENGLISH) },
-                                label = { Text(t.english) }
-                            )
-                            FilterChip(
-                                selected = uiState.currentLanguage == LANG_CHINESE,
-                                onClick = { viewModel.setLanguage(LANG_CHINESE) },
-                                label = { Text(t.chinese) }
+        ) { padding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    GlassCard(
+                        onClick = onDonation,
+                        modifier = Modifier.fillMaxWidth(),
+                        accent = WarmGlow
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(44.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                color = WarmGlow.copy(alpha = 0.16f)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.Favorite,
+                                        contentDescription = null,
+                                        tint = WarmGlow,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    t.supportDevelopment,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    t.supportSubtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                                )
+                            }
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                             )
                         }
                     }
                 }
-            }
 
-            // === AI Providers ===
-            item {
-                SectionHeader(t.aiProviders)
-            }
+                item { Spacer(Modifier.height(4.dp)) }
 
-            item {
-                Text(
-                    t.aiProvidersSubtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-            }
+                item {
+                    SectionHeader(t.sectionGeneral)
+                }
 
-            items(uiState.providers) { config ->
-                ProviderCard(
-                    config = config,
-                    onClick = { onProviderSelected(config.provider.name) },
-                    t = t
-                )
+                item {
+                    GlassCard(modifier = Modifier.fillMaxWidth(), accent = Primary) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                t.language,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(
+                                    selected = uiState.currentLanguage == LANG_ENGLISH,
+                                    onClick = { viewModel.setLanguage(LANG_ENGLISH) },
+                                    label = { Text(t.english) }
+                                )
+                                FilterChip(
+                                    selected = uiState.currentLanguage == LANG_CHINESE,
+                                    onClick = { viewModel.setLanguage(LANG_CHINESE) },
+                                    label = { Text(t.chinese) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    SectionHeader(t.aiProviders)
+                }
+
+                item {
+                    Text(
+                        t.aiProvidersSubtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+
+                items(uiState.providers) { config ->
+                    ProviderCard(
+                        config = config,
+                        onClick = { onProviderSelected(config.provider.name) },
+                        t = t
+                    )
+                }
             }
         }
     }
@@ -125,10 +175,10 @@ private fun ProviderCard(
     onClick: () -> Unit,
     t: Translation
 ) {
-    Card(
+    GlassCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+        accent = if (config.isEnabled) Tertiary else MaterialTheme.colorScheme.error
     ) {
         Row(
             modifier = Modifier
@@ -136,7 +186,6 @@ private fun ProviderCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Provider icon/avatar
             Surface(
                 modifier = Modifier.size(44.dp),
                 shape = RoundedCornerShape(12.dp),

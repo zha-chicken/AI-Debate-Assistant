@@ -39,7 +39,7 @@ data class RebuttalTrainerUiState(
     val explanation: RebuttalExplanation? = null,
     val chatMessages: List<RebuttalChatMessage> = emptyList(),
     val chatInput: String = "",
-    val reviewingSessionId: String? = null, // non-null when viewing history
+    val reviewingSessionId: String? = null,
     val error: String? = null
 )
 

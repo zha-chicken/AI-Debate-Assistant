@@ -46,6 +46,9 @@ class DebateRepositoryImpl @Inject constructor(
     override fun getResult(sessionId: String): Flow<DebateResult?> =
         resultDao.getBySessionId(sessionId).map { it?.toDomain() }
 
+    override fun getAllResults(): Flow<List<DebateResult>> =
+        resultDao.getAll().map { list -> list.map { it.toDomain() } }
+
     override fun getAllSessions(): Flow<List<DebateSessionSummary>> =
         sessionDao.getAllSummaries().map { list -> list.map { it.toDomain() } }
 

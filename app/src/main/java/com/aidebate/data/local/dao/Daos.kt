@@ -16,7 +16,7 @@ interface DebateSessionDao {
     fun getById(id: String): Flow<DebateSessionEntity?>
 
     @Query("""
-        SELECT ds.id, ds.mode, ds.format, ds.status, ds.created_at as createdAt,
+        SELECT ds.id, ds.mode, ds.format, ds.status, ds.user_side as userSide, ds.created_at as createdAt,
                dt.title as topicTitle, (SELECT COUNT(*) FROM debate_turns WHERE session_id = ds.id) as turnCount
         FROM debate_sessions ds
         INNER JOIN debate_topics dt ON ds.topic_id = dt.id
@@ -34,6 +34,7 @@ data class SessionSummaryTuple(
     val mode: String,
     val format: String,
     val status: String,
+    val userSide: String?,
     val turnCount: Int,
     val createdAt: Long
 )
@@ -87,4 +88,7 @@ interface DebateResultDao {
 
     @Query("SELECT * FROM debate_results WHERE session_id = :sessionId")
     fun getBySessionId(sessionId: String): Flow<DebateResultEntity?>
+
+    @Query("SELECT * FROM debate_results ORDER BY created_at DESC")
+    fun getAll(): Flow<List<DebateResultEntity>>
 }

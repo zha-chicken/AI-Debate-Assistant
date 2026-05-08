@@ -12,6 +12,7 @@ interface DebateRepository {
     fun getTurns(sessionId: String): Flow<List<DebateTurn>>
     suspend fun saveResult(result: DebateResult)
     fun getResult(sessionId: String): Flow<DebateResult?>
+    fun getAllResults(): Flow<List<DebateResult>>
     fun getAllSessions(): Flow<List<DebateSessionSummary>>
     suspend fun deleteSession(sessionId: String)
 }
