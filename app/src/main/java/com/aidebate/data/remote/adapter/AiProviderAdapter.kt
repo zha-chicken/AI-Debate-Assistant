@@ -307,11 +307,19 @@ private class SafeAiProviderAdapter(
         conversationHistory
             .filterNot { it.role.equals("assistant", ignoreCase = true) }
             .forEach { message ->
-                contentSafetyRepository.assertSafe(message.content, ContentSafetySource.USER_PROMPT)
+                contentSafetyRepository.assertSafe(
+                    text = message.content,
+                    source = ContentSafetySource.USER_PROMPT,
+                    preferredConfig = providerConfig
+                )
             }
 
         val result = delegate.chat(systemPrompt, conversationHistory, config, providerConfig)
-        contentSafetyRepository.assertSafe(result.content, ContentSafetySource.AI_RESPONSE)
+        contentSafetyRepository.assertSafe(
+            text = result.content,
+            source = ContentSafetySource.AI_RESPONSE,
+            preferredConfig = providerConfig
+        )
         return result
     }
 

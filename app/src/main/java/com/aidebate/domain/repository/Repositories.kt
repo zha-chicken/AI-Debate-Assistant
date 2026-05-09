@@ -38,5 +38,9 @@ interface SettingsRepository {
 }
 
 interface ContentSafetyRepository {
-    suspend fun assertSafe(text: String, source: ContentSafetySource)
+    suspend fun assertSafe(
+        text: String,
+        source: ContentSafetySource,
+        preferredConfig: ProviderConfig? = null
+    )
 }

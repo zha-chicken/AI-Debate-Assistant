@@ -80,7 +80,12 @@ class DebateOrchestratorImpl @Inject constructor(
 
     override suspend fun submitUserTurn(content: String): DebateTurn {
         val currentSession = _session.value ?: error("No active session")
-        contentSafetyRepository.assertSafe(content, ContentSafetySource.USER_PROMPT)
+        val responseConfig = providerConfigRepository.getConfig(currentSession.providerOpposition)
+        contentSafetyRepository.assertSafe(
+            text = content,
+            source = ContentSafetySource.USER_PROMPT,
+            preferredConfig = responseConfig
+        )
         val userTurn = DebateTurn(
             id = UUID.randomUUID().toString(),
             sessionId = currentSession.id,
