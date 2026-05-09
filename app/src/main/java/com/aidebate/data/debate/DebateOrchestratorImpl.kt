@@ -212,14 +212,16 @@ class DebateOrchestratorImpl @Inject constructor(
                 append("and determine the winner. Consider argument quality, evidence, logic, and persuasiveness.\n\n")
                 append("Topic: $topicTitle\n\n")
                 if (currentSession.mode == DebateMode.USER_VS_AI) {
-                    append("This is a User vs AI debate. The user argued as: $userSideText.\n")
+                    append("This is a User vs AI debate.\n")
+                    append("USER_SIDE: $userSideText\n")
+                    append("AI_SIDE: ${if (userSideText == "PROPOSITION") "OPPOSITION" else "PROPOSITION"}\n")
                 }
                 append("=== DEBATE TRANSCRIPT ===\n")
                 append(transcript)
                 append("\n=== END TRANSCRIPT ===\n\n")
-                append("Respond in this format:\n")
-                append("WINNER: [PROPOSITION or OPPOSITION]\n")
-                append("SUMMARY: [2-3 sentence explanation with a concise score such as 6:4 or 7:5]")
+                append("Return ONLY valid JSON, no markdown, no extra text.\n")
+                append("Use the debate side, not the participant name, for winnerSide.\n")
+                append("""{"winnerSide":"PROPOSITION|OPPOSITION|TIE","score":"<winner score>-<loser score, e.g. 7-3>","summary":"<2-3 sentence explanation>"}""")
             }
 
             val judgeConfig = findJudgeProviderConfig(currentSession)
@@ -234,7 +236,12 @@ class DebateOrchestratorImpl @Inject constructor(
             )
 
             val (rawWinner, summary) = parseJudgeResponse(result.content)
-            val winner = mapWinnerForSession(rawWinner, currentSession)
+            val winner = resolveWinnerForSession(
+                parsedWinner = rawWinner,
+                session = currentSession,
+                rawResponse = result.content,
+                summary = summary
+            )
             val debateResult = DebateResult(
                 id = UUID.randomUUID().toString(),
                 sessionId = currentSession.id,
@@ -312,12 +319,63 @@ class DebateOrchestratorImpl @Inject constructor(
             .firstOrNull { it.apiKey.isNotBlank() }
     }
 
-    private fun mapWinnerForSession(winner: SpeakerRole?, session: DebateSession): SpeakerRole? {
-        if (session.mode != DebateMode.USER_VS_AI || winner == null) return winner
-        return if (winner == session.userSide) {
+    private fun resolveWinnerForSession(
+        parsedWinner: SpeakerRole?,
+        session: DebateSession,
+        rawResponse: String,
+        summary: String
+    ): SpeakerRole? {
+        if (session.mode != DebateMode.USER_VS_AI) return parsedWinner
+        inferParticipantWinnerFromSummary(rawResponse, summary, session)?.let { return it }
+        if (parsedWinner == null) return null
+        if (parsedWinner == SpeakerRole.USER) return SpeakerRole.USER
+        return if (parsedWinner == session.userSide) {
             SpeakerRole.USER
         } else {
             if (session.userSide == SpeakerRole.AI_PROPOSITION) SpeakerRole.AI_OPPOSITION else SpeakerRole.AI_PROPOSITION
+        }
+    }
+
+    private fun inferParticipantWinnerFromSummary(
+        rawResponse: String,
+        summary: String,
+        session: DebateSession
+    ): SpeakerRole? {
+        val text = "$rawResponse\n$summary".lowercase()
+        val aiSide = if (session.userSide == SpeakerRole.AI_PROPOSITION) {
+            SpeakerRole.AI_OPPOSITION
+        } else {
+            SpeakerRole.AI_PROPOSITION
+        }
+        val aiWinSignals = listOf(
+            "ai won",
+            "ai wins",
+            "ai presented",
+            "ai's argument",
+            "ai’s argument",
+            "uncontested",
+            "user provided no",
+            "user offered no",
+            "without any rebuttal from the user",
+            "without rebuttal from the user",
+            "user failed"
+        )
+        val userWinSignals = listOf(
+            "user won",
+            "user wins",
+            "user presented a stronger",
+            "user provided a stronger",
+            "user's argument was stronger",
+            "user’s argument was stronger",
+            "ai provided no",
+            "ai failed"
+        )
+        val aiWins = aiWinSignals.any { it in text }
+        val userWins = userWinSignals.any { it in text }
+        return when {
+            aiWins && !userWins -> aiSide
+            userWins && !aiWins -> SpeakerRole.USER
+            else -> null
         }
     }
 
@@ -480,6 +538,7 @@ class DebateOrchestratorImpl @Inject constructor(
     }
 
     private fun parseJudgeResponse(response: String): Pair<SpeakerRole?, String> {
+        parseJudgeJson(response)?.let { return it }
         val winner = when {
             response.contains("WINNER: PROPOSITION", ignoreCase = true) ||
             response.contains("WINNER: FOR", ignoreCase = true) ||
@@ -489,6 +548,7 @@ class DebateOrchestratorImpl @Inject constructor(
             response.contains("WINNER: AGAINST", ignoreCase = true) ||
             response.contains("WINNER: OPPOSE", ignoreCase = true) ||
             response.contains("WINNER: CON", ignoreCase = true) -> SpeakerRole.AI_OPPOSITION
+            response.contains("WINNER: AI", ignoreCase = true) -> SpeakerRole.AI_OPPOSITION
             response.contains("WINNER: USER", ignoreCase = true) -> SpeakerRole.USER
             else -> null
         }
@@ -497,5 +557,47 @@ class DebateOrchestratorImpl @Inject constructor(
             .replace(Regex("SUMMARY:", RegexOption.IGNORE_CASE), "")
             .trim()
         return winner to summary
+    }
+
+    private fun parseJudgeJson(response: String): Pair<SpeakerRole?, String>? {
+        return try {
+            val json = extractJsonObject(response)
+            val obj = JSONObject(json)
+            val winnerText = obj.optString("winnerSide", obj.optString("winner", ""))
+            val winner = when {
+                winnerText.equals("PROPOSITION", ignoreCase = true) ||
+                winnerText.equals("SUPPORT", ignoreCase = true) ||
+                winnerText.equals("PRO", ignoreCase = true) -> SpeakerRole.AI_PROPOSITION
+                winnerText.equals("OPPOSITION", ignoreCase = true) ||
+                winnerText.equals("OPPOSE", ignoreCase = true) ||
+                winnerText.equals("AGAINST", ignoreCase = true) ||
+                winnerText.equals("CON", ignoreCase = true) -> SpeakerRole.AI_OPPOSITION
+                winnerText.equals("USER", ignoreCase = true) -> SpeakerRole.USER
+                else -> null
+            }
+            val score = obj.optString("score", "").trim()
+            val summary = buildString {
+                append(obj.optString("summary", "").trim())
+                if (score.isNotBlank() && !contains(score)) {
+                    if (isNotBlank()) append(" ")
+                    append("Score: $score.")
+                }
+            }.ifBlank { response.trim() }
+            winner to summary
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun extractJsonObject(text: String): String {
+        val trimmed = text.trim()
+            .removePrefix("```json")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
+        val start = trimmed.indexOf('{')
+        val end = trimmed.lastIndexOf('}')
+        if (start == -1 || end == -1 || end <= start) return trimmed
+        return trimmed.substring(start, end + 1)
     }
 }

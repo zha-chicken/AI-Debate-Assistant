@@ -317,6 +317,13 @@ Content:
 
 The result screen should feel conclusive but still analytical.
 
+Winner handling rules:
+
+- AI judgment should return a structured winner side, not ambiguous `USER` or `AI` prose.
+- In User vs AI debates, the result screen maps the winning side back to `You`, `AI - Support`, or `AI - Oppose`.
+- If an older saved result has contradictory data, such as `USER` as winner but a summary saying the AI clearly won, the display should prefer the summary evidence instead of showing an obviously wrong participant.
+- Result text should use near-white colors on glass surfaces.
+
 ### History
 
 Purpose: revisit debates and training results.

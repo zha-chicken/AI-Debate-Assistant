@@ -3,6 +3,7 @@ package com.aidebate.presentation.result
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aidebate.domain.model.DebateResult
+import com.aidebate.domain.model.DebateSession
 import com.aidebate.domain.model.DebateTurn
 import com.aidebate.domain.repository.DebateRepository
 import com.aidebate.domain.repository.TopicRepository
@@ -13,6 +14,7 @@ import javax.inject.Inject
 
 data class DebateResultUiState(
     val topicTitle: String = "",
+    val session: DebateSession? = null,
     val turns: List<DebateTurn> = emptyList(),
     val result: DebateResult? = null,
     val isLoading: Boolean = true
@@ -38,6 +40,7 @@ class DebateResultViewModel @Inject constructor(
                 .collect { (turns, result) ->
                     _uiState.value = DebateResultUiState(
                         topicTitle = topic?.title ?: "",
+                        session = session,
                         turns = turns,
                         result = result,
                         isLoading = false

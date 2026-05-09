@@ -29,6 +29,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.DebateTurn
+import com.aidebate.domain.model.DebateMode
+import com.aidebate.domain.model.DebateSession
 import com.aidebate.domain.model.SpeakerRole
 import com.aidebate.presentation.common.GlowWrapper
 import com.aidebate.presentation.localization.LocalTranslation
@@ -66,7 +68,12 @@ fun DebateResultScreen(
                                     append("${turn.speakerRole.name}: ${turn.content}\n\n")
                                 }
                                 if (uiState.result != null) {
-                                    append(String.format(t.resultWinner, uiState.result!!.winner?.name) + "\n")
+                                    val displayWinner = resolveDisplayWinner(
+                                        winner = uiState.result!!.winner,
+                                        summary = uiState.result!!.summary,
+                                        session = uiState.session
+                                    )
+                                    append(String.format(t.resultWinner, formatWinner(displayWinner, uiState.session)) + "\n")
                                     append(uiState.result!!.summary)
                                 }
                             }
@@ -102,6 +109,7 @@ fun DebateResultScreen(
                     WinnerCard(
                         topicTitle = uiState.topicTitle,
                         winner = uiState.result?.winner,
+                        session = uiState.session,
                         summary = uiState.result?.summary ?: ""
                     )
                 }
@@ -151,14 +159,15 @@ fun DebateResultScreen(
 private fun WinnerCard(
     topicTitle: String,
     winner: SpeakerRole?,
+    session: DebateSession?,
     summary: String,
 ) {
     val t = LocalTranslation.current
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
 
-    val winnerRole = winner?.toDebateRole()
-    val winnerTokens = winnerRole?.let { RoleTokenDefaults.forRole(it) }
+    val displayWinner = resolveDisplayWinner(winner, summary, session)
+    val winnerTokens = displayWinner?.toDebateRole()?.let { RoleTokenDefaults.forRole(it) }
 
     AnimatedVisibility(
         visible = visible,
@@ -188,18 +197,19 @@ private fun WinnerCard(
                     Text(
                         topicTitle,
                         style = MaterialTheme.typography.titleMedium,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        color = RhetorixTextColors.Primary
                     )
                     Spacer(Modifier.height(Spacing.sm))
 
-                    if (winner != null) {
+                    if (displayWinner != null) {
                         Text(
                             t.winner,
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                            color = RhetorixTextColors.Secondary
                         )
                         Text(
-                            winner.name.replace("AI_", ""),
+                            formatWinner(displayWinner, session),
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             color = winnerTokens?.color?.primary ?: MaterialTheme.colorScheme.tertiary
@@ -209,7 +219,8 @@ private fun WinnerCard(
                             Text(
                                 summary,
                                 style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                color = RhetorixTextColors.Secondary
                             )
                         }
                     } else {
@@ -222,6 +233,64 @@ private fun WinnerCard(
                 }
             }
         }
+    }
+}
+
+private fun formatWinner(winner: SpeakerRole?, session: DebateSession?): String {
+    return when (winner) {
+        SpeakerRole.USER -> "You"
+        SpeakerRole.AI_PROPOSITION -> {
+            if (session?.mode == DebateMode.USER_VS_AI) "AI - Support" else "Support"
+        }
+        SpeakerRole.AI_OPPOSITION -> {
+            if (session?.mode == DebateMode.USER_VS_AI) "AI - Oppose" else "Oppose"
+        }
+        SpeakerRole.MODERATOR -> "Judge"
+        null -> "N/A"
+    }
+}
+
+private fun resolveDisplayWinner(
+    winner: SpeakerRole?,
+    summary: String,
+    session: DebateSession?
+): SpeakerRole? {
+    if (session?.mode != DebateMode.USER_VS_AI) return winner
+    val text = summary.lowercase()
+    val aiSide = if (session.userSide == SpeakerRole.AI_PROPOSITION) {
+        SpeakerRole.AI_OPPOSITION
+    } else {
+        SpeakerRole.AI_PROPOSITION
+    }
+    val aiWinSignals = listOf(
+        "ai won",
+        "ai wins",
+        "ai presented",
+        "ai's argument",
+        "ai’s argument",
+        "uncontested",
+        "user provided no",
+        "user offered no",
+        "without any rebuttal from the user",
+        "without rebuttal from the user",
+        "user failed"
+    )
+    val userWinSignals = listOf(
+        "user won",
+        "user wins",
+        "user presented a stronger",
+        "user provided a stronger",
+        "user's argument was stronger",
+        "user’s argument was stronger",
+        "ai provided no",
+        "ai failed"
+    )
+    val aiWins = aiWinSignals.any { it in text }
+    val userWins = userWinSignals.any { it in text }
+    return when {
+        aiWins && !userWins -> aiSide
+        userWins && !aiWins -> SpeakerRole.USER
+        else -> winner
     }
 }
 
