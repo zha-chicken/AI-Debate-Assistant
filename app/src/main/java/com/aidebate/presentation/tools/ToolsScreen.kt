@@ -17,10 +17,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,10 +37,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aidebate.presentation.common.TopLevelBottomBar
+import com.aidebate.presentation.common.TopLevelDestination
 import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.AiBackdrop
 import com.aidebate.presentation.theme.GlassCard
+import com.aidebate.presentation.theme.GlassCardLevel
 import com.aidebate.presentation.theme.Primary
+import com.aidebate.presentation.theme.RhetorixAccents
 import com.aidebate.presentation.theme.Spacing
 import com.aidebate.presentation.theme.Tertiary
 import com.aidebate.presentation.theme.WarmGlow
@@ -47,13 +53,76 @@ import com.aidebate.presentation.theme.softCircle
 
 private const val HALLUCINATION_DETECTOR_URL = "https://gptzero.me/hallucination-detector"
 
+private sealed interface ToolDestination {
+    data object Internal : ToolDestination
+    data class External(val url: String) : ToolDestination
+}
+
+private data class ToolCardUi(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val accent: Color,
+    val requiresAiProvider: Boolean,
+    val isExternalLink: Boolean,
+    val destination: ToolDestination,
+)
+
 @Composable
 fun ToolsScreen(
+    onArgumentGraph: () -> Unit,
+    onRebuttalTrainer: () -> Unit,
     onFallacyDetector: () -> Unit,
+    onHome: () -> Unit,
+    onHistory: () -> Unit,
+    onSettings: () -> Unit,
     onBack: () -> Unit,
 ) {
     val t = LocalTranslation.current
     val uriHandler = LocalUriHandler.current
+    val tools = listOf(
+        ToolCardUi(
+            id = "argument_graph",
+            title = t.argumentMap,
+            subtitle = "Map how claims, evidence, objections, and rebuttals connect.",
+            icon = Icons.Filled.AccountTree,
+            accent = Primary,
+            requiresAiProvider = false,
+            isExternalLink = false,
+            destination = ToolDestination.Internal,
+        ),
+        ToolCardUi(
+            id = "rebuttal_trainer",
+            title = t.rebuttalTrainer,
+            subtitle = t.rebuttalTrainerSubtitle,
+            icon = Icons.Filled.Timer,
+            accent = WarmGlow,
+            requiresAiProvider = true,
+            isExternalLink = false,
+            destination = ToolDestination.Internal,
+        ),
+        ToolCardUi(
+            id = "fallacy_detector",
+            title = t.fallacyDetector,
+            subtitle = t.fallacyDetectorSubtitle,
+            icon = Icons.Filled.Search,
+            accent = Tertiary,
+            requiresAiProvider = true,
+            isExternalLink = false,
+            destination = ToolDestination.Internal,
+        ),
+        ToolCardUi(
+            id = "hallucination_detector",
+            title = t.hallucinationDetector,
+            subtitle = t.hallucinationDetectorSubtitle,
+            icon = Icons.Filled.Psychology,
+            accent = RhetorixAccents.Lavender,
+            requiresAiProvider = false,
+            isExternalLink = true,
+            destination = ToolDestination.External(HALLUCINATION_DETECTOR_URL),
+        ),
+    )
 
     AiBackdrop {
         Scaffold(
@@ -67,6 +136,15 @@ fun ToolsScreen(
                         }
                     },
                     colors = glassTopAppBarColors()
+                )
+            },
+            bottomBar = {
+                TopLevelBottomBar(
+                    selected = TopLevelDestination.Tools,
+                    onHome = onHome,
+                    onHistory = onHistory,
+                    onTools = {},
+                    onSettings = onSettings,
                 )
             }
         ) { padding ->
@@ -85,24 +163,24 @@ fun ToolsScreen(
                     modifier = Modifier.padding(bottom = Spacing.sm)
                 )
 
-                ToolCard(
-                    title = t.fallacyDetector,
-                    subtitle = t.fallacyDetectorSubtitle,
-                    icon = Icons.Filled.Search,
-                    accent = Tertiary,
-                    trailingIcon = Icons.Filled.ChevronRight,
-                    onClick = onFallacyDetector,
-                )
-
-                ToolCard(
-                    title = t.hallucinationDetector,
-                    subtitle = t.hallucinationDetectorSubtitle,
-                    icon = Icons.Filled.Psychology,
-                    accent = WarmGlow,
-                    trailingText = t.openExternalTool,
-                    trailingIcon = Icons.Filled.OpenInNew,
-                    onClick = { uriHandler.openUri(HALLUCINATION_DETECTOR_URL) },
-                )
+                tools.forEach { tool ->
+                    ToolCard(
+                        tool = tool,
+                        onClick = {
+                            when (tool.id) {
+                                "argument_graph" -> onArgumentGraph()
+                                "rebuttal_trainer" -> onRebuttalTrainer()
+                                "fallacy_detector" -> onFallacyDetector()
+                                "hallucination_detector" -> uriHandler.openUri(HALLUCINATION_DETECTOR_URL)
+                            }
+                        },
+                        trailingText = when {
+                            tool.isExternalLink -> t.openExternalTool
+                            tool.requiresAiProvider -> "Requires AI"
+                            else -> "AI optional"
+                        },
+                    )
+                }
             }
         }
     }
@@ -110,17 +188,14 @@ fun ToolsScreen(
 
 @Composable
 private fun ToolCard(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    accent: Color,
-    trailingIcon: ImageVector,
+    tool: ToolCardUi,
     onClick: () -> Unit,
     trailingText: String? = null,
 ) {
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        accent = accent,
+        accent = tool.accent,
+        level = GlassCardLevel.Interactive,
         onClick = onClick,
     ) {
         Row(
@@ -132,21 +207,21 @@ private fun ToolCard(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .softCircle(accent.copy(alpha = 0.24f)),
+                    .softCircle(tool.accent.copy(alpha = 0.24f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
+                Icon(tool.icon, contentDescription = null, tint = tool.accent, modifier = Modifier.size(24.dp))
             }
             Spacer(Modifier.width(Spacing.md))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    title,
+                    tool.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(Spacing.xs))
                 Text(
-                    subtitle,
+                    tool.subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f)
                 )
@@ -161,9 +236,9 @@ private fun ToolCard(
             }
             Spacer(Modifier.width(Spacing.sm))
             Icon(
-                trailingIcon,
+                if (tool.isExternalLink) Icons.Filled.OpenInNew else Icons.Filled.ChevronRight,
                 contentDescription = null,
-                tint = Primary.copy(alpha = 0.82f),
+                tint = tool.accent.copy(alpha = 0.82f),
                 modifier = Modifier.size(20.dp)
             )
         }

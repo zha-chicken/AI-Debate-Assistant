@@ -86,12 +86,12 @@ object RoleTokenDefaults {
 
     val Pro = RoleTokens(
         role = DebateRole.PRO,
-        label = "PRO",
+        label = "Support",
         color = RoleColorTokens(
-            primary = Color(0xFFA9B9CA),
+            primary = RhetorixAccents.Cyan,
             gradientStart = Color(0xFF4D6570),
-            gradientEnd = Color(0xFFA9B9CA),
-            glow = Color(0xFFA9B9CA),
+            gradientEnd = RhetorixAccents.Cyan,
+            glow = RhetorixAccents.Cyan,
             surface = Color(0xFF253B44),
             onSurface = Color(0xFFEAF1F4),
             container = Color(0xFF314953),
@@ -123,12 +123,12 @@ object RoleTokenDefaults {
 
     val Con = RoleTokens(
         role = DebateRole.CON,
-        label = "CON",
+        label = "Oppose",
         color = RoleColorTokens(
-            primary = Color(0xFFE4A184),
+            primary = RhetorixAccents.Peach,
             gradientStart = Color(0xFF8B5A4A),
-            gradientEnd = Color(0xFFE4A184),
-            glow = Color(0xFFE4A184),
+            gradientEnd = RhetorixAccents.Peach,
+            glow = RhetorixAccents.Peach,
             surface = Color(0xFF4A332F),
             onSurface = Color(0xFFFFE1D4),
             container = Color(0xFF573D36),
@@ -160,12 +160,12 @@ object RoleTokenDefaults {
 
     val User = RoleTokens(
         role = DebateRole.USER,
-        label = "YOU",
+        label = "You",
         color = RoleColorTokens(
-            primary = Color(0xFF9FC5BC),
+            primary = RhetorixAccents.Green,
             gradientStart = Color(0xFF476A63),
-            gradientEnd = Color(0xFF9FC5BC),
-            glow = Color(0xFF9FC5BC),
+            gradientEnd = RhetorixAccents.Green,
+            glow = RhetorixAccents.Green,
             surface = Color(0xFF284842),
             onSurface = Color(0xFFE1F5F0),
             container = Color(0xFF284842),

@@ -147,6 +147,34 @@ private fun MainContent(
         Spacer(Modifier.height(Spacing.xl))
 
         // Results section
+        if (!uiState.hasAnalyzed && !uiState.isAnalyzing) {
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                accent = Primary,
+                level = GlassCardLevel.PageGroup
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Filled.Search, null, tint = Primary)
+                    Spacer(Modifier.width(Spacing.md))
+                    Column {
+                        Text(
+                            "Paste an argument to analyze",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            "Rhetorix will identify possible fallacies and explain how to improve the reasoning.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f)
+                        )
+                    }
+                }
+            }
+        }
+
         AnimatedVisibility(visible = uiState.hasAnalyzed, enter = fadeIn() + expandVertically()) {
             Column {
                 ResultsHeader(

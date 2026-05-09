@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.AiProvider
 import com.aidebate.domain.model.ProviderConfig
+import com.aidebate.presentation.common.TopLevelBottomBar
+import com.aidebate.presentation.common.TopLevelDestination
 import com.aidebate.presentation.localization.*
 import com.aidebate.presentation.theme.*
 
@@ -26,6 +28,9 @@ fun SettingsScreen(
     onProviderSelected: (String) -> Unit,
     onBack: () -> Unit,
     onDonation: () -> Unit = {},
+    onHome: () -> Unit = onBack,
+    onHistory: () -> Unit = {},
+    onTools: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -45,6 +50,15 @@ fun SettingsScreen(
                         }
                     },
                     colors = glassTopAppBarColors()
+                )
+            },
+            bottomBar = {
+                TopLevelBottomBar(
+                    selected = TopLevelDestination.Settings,
+                    onHome = onHome,
+                    onHistory = onHistory,
+                    onTools = onTools,
+                    onSettings = {},
                 )
             }
         ) { padding ->

@@ -4,6 +4,8 @@ package com.aidebate.presentation.theme
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -21,8 +23,13 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -37,12 +44,12 @@ fun AiBackdrop(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(BackgroundDark)
+            .background(RhetorixColors.BackgroundBase)
     ) {
         Canvas(Modifier.fillMaxSize()) {
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(WarmGlow.copy(alpha = 0.22f), Color.Transparent),
+                    colors = listOf(RhetorixColors.BackgroundGlowAmber, Color.Transparent),
                     center = Offset(size.width * 0.74f, size.height * 0.12f),
                     radius = size.minDimension * 0.72f,
                 ),
@@ -51,7 +58,7 @@ fun AiBackdrop(
             )
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Tertiary.copy(alpha = 0.18f), Color.Transparent),
+                    colors = listOf(RhetorixColors.BackgroundGlowCyan, Color.Transparent),
                     center = Offset(size.width * 0.12f, size.height * 0.92f),
                     radius = size.minDimension * 0.75f,
                 ),
@@ -75,25 +82,60 @@ fun AiBackdrop(
     }
 }
 
+enum class GlassCardLevel {
+    PageGroup,
+    Interactive,
+    Focus,
+    Result,
+    Error,
+}
+
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
     accent: Color = Primary,
+    level: GlassCardLevel = if (selected) GlassCardLevel.Focus else GlassCardLevel.Interactive,
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
-    val shape = Radii.mediumShape
+    val shape = when (level) {
+        GlassCardLevel.PageGroup -> Radii.largeShape
+        else -> Radii.mediumShape
+    }
+    val fill = when (level) {
+        GlassCardLevel.PageGroup -> RhetorixSurfaces.GlassMuted
+        GlassCardLevel.Interactive -> RhetorixSurfaces.GlassBase
+        GlassCardLevel.Focus -> accent.copy(alpha = 0.16f)
+        GlassCardLevel.Result -> RhetorixSurfaces.GlassRaised
+        GlassCardLevel.Error -> RhetorixAccents.Salmon.copy(alpha = 0.14f)
+    }
+    val stroke = when (level) {
+        GlassCardLevel.PageGroup -> RhetorixBorders.Subtle
+        GlassCardLevel.Interactive -> RhetorixBorders.Standard
+        GlassCardLevel.Focus -> if (accent == WarmGlow || accent == Secondary || accent == WarningAmber) {
+            RhetorixBorders.FocusAmber
+        } else {
+            RhetorixBorders.FocusCyan
+        }
+        GlassCardLevel.Result -> accent.copy(alpha = 0.55f)
+        GlassCardLevel.Error -> RhetorixBorders.Error
+    }
     val colors = CardDefaults.cardColors(
-        containerColor = if (selected) GlassSurfaceStrong else GlassSurface
+        containerColor = fill
     )
-    val border = BorderStroke(
-        width = 1.dp,
-        color = if (selected) accent.copy(alpha = 0.85f) else GlassStroke
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && onClick != null) MotionScale.CardPressScale else 1f,
+        animationSpec = tween(MotionDuration.short),
+        label = "glassCardPress"
     )
+    val border = BorderStroke(1.dp, if (pressed && onClick != null) accent.copy(alpha = 0.82f) else stroke)
+    val scaledModifier = modifier.scale(scale)
     if (onClick == null) {
         Card(
-            modifier = modifier,
+            modifier = scaledModifier,
             shape = shape,
             colors = colors,
             border = border,
@@ -103,10 +145,11 @@ fun GlassCard(
     } else {
         Card(
             onClick = onClick,
-            modifier = modifier,
+            modifier = scaledModifier,
             shape = shape,
             colors = colors,
             border = border,
+            interactionSource = interactionSource,
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             content = { content() }
         )
@@ -117,7 +160,7 @@ fun Modifier.glassPanel(
     radius: androidx.compose.ui.unit.Dp = Radii.medium,
     strokeColor: Color = GlassStroke,
 ): Modifier = clip(RoundedCornerShape(radius))
-    .background(GlassSurface)
+    .background(RhetorixSurfaces.GlassBase)
     .border(1.dp, strokeColor, RoundedCornerShape(radius))
 
 fun Modifier.softCircle(

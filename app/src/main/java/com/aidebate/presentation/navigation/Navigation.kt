@@ -183,13 +183,21 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() },
                 onHome = { navController.popBackStack(Screen.Home.route, false) },
                 onTools = { navController.navigate(Screen.Tools.route) },
-                onSettings = { navController.navigate(Screen.Settings.route) }
+                onSettings = { navController.navigate(Screen.Settings.route) },
+                onStartDebate = { navController.navigate(Screen.TopicSelection.createRoute()) }
             )
         }
 
         composable(Screen.Tools.route) {
             ToolsScreen(
+                onArgumentGraph = {
+                    navController.navigate(Screen.TopicSelection.createRoute(Screen.TopicSelection.TARGET_ARGUMENT_MAP))
+                },
+                onRebuttalTrainer = { navController.navigate(Screen.RebuttalTrainer.route) },
                 onFallacyDetector = { navController.navigate(Screen.FallacyDetector.route) },
+                onHome = { navController.popBackStack(Screen.Home.route, false) },
+                onHistory = { navController.navigate(Screen.History.route) },
+                onSettings = { navController.navigate(Screen.Settings.route) },
                 onBack = { navController.popBackStack() }
             )
         }
@@ -200,7 +208,10 @@ fun AppNavHost(
                     navController.navigate(Screen.ProviderConfig.createRoute(providerName))
                 },
                 onBack = { navController.popBackStack() },
-                onDonation = { navController.navigate(Screen.Donation.route) }
+                onDonation = { navController.navigate(Screen.Donation.route) },
+                onHome = { navController.popBackStack(Screen.Home.route, false) },
+                onHistory = { navController.navigate(Screen.History.route) },
+                onTools = { navController.navigate(Screen.Tools.route) }
             )
         }
 

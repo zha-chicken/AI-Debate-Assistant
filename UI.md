@@ -42,6 +42,46 @@ The visual style should avoid:
 
 ## Color System
 
+The implemented Compose theme now exposes exact reusable design tokens. Designers should treat these as the current production baseline.
+
+Background tokens:
+
+- `BackgroundBase`: `#13242B`, default deep blue-green graphite backdrop
+- `BackgroundDeep`: `#0E1A20`, deeper backdrop for dense analysis screens
+- `BackgroundGlowCyan`: translucent cyan radial glow
+- `BackgroundGlowAmber`: translucent amber radial glow
+
+Glass surface tokens:
+
+- `GlassBase`: normal glass card surface
+- `GlassRaised`: stronger raised glass surface
+- `GlassMuted`: low-emphasis grouping panel
+- `GlassStrong`: selected or important container
+
+Border tokens:
+
+- `Subtle`: low-contrast glass border
+- `Standard`: default card border
+- `FocusCyan`: selected AI, analysis, graph, or support state
+- `FocusAmber`: debate tension, opposing side, or highlight state
+- `Error`: error or negative finding state
+
+Accent tokens:
+
+- `Cyan`: AI, analysis, logic, graph signals
+- `Amber`: debate tension, turning points, neutral highlights
+- `Peach`: donation, warmth, support
+- `Green`: success, support, completion
+- `Salmon`: errors, refutation, detected problems
+- `Lavender`: secondary emphasis only
+
+Text tokens:
+
+- `Primary`: near-white primary text
+- `Secondary`: reduced-opacity white secondary text
+- `Tertiary`: lower-emphasis supporting text
+- `Disabled`: disabled text on dark glass
+
 Primary surface:
 
 - App background: deep blue-green graphite, close to `#13242B`
@@ -131,6 +171,16 @@ Cards are used for:
 - Analysis result items
 - Relationship graph detail panels
 
+The implemented hierarchy has five card levels:
+
+- Page Group: low-emphasis section or dashboard grouping panel
+- Interactive: default tappable card or row
+- Focus: selected item, active turn, or selected node
+- Result: outcome, score, or connection test summary
+- Error: failure, invalid state, or negative analysis result
+
+Interactive cards include a subtle press scale and border brightening. Selection must not rely on color alone.
+
 ### Buttons
 
 Buttons should feel solid enough to be tappable but still fit the glass system.
@@ -189,6 +239,12 @@ Content hierarchy:
 Stats must be dynamic and start at zero for a new user.
 
 The home screen should feel like an active dashboard, not a landing page.
+
+Current implementation includes a first-use card when the debate count is zero:
+
+- Title: New Debate
+- Purpose: start the first structured debate
+- Behavior: opens topic selection
 
 ### Topic Selection
 
@@ -294,6 +350,12 @@ Content:
 - Add node action
 - Graph controls for movement or reset when needed
 
+Empty state behavior:
+
+- Primary action: Generate with AI
+- Secondary action: Add Argument manually
+- Manual graph creation remains available without AI
+
 Visual rules:
 
 - Supportive relationships can use cool green or cyan
@@ -314,6 +376,8 @@ Content:
 - Result cards for detected fallacies
 - Severity indicators
 - Clear action
+
+Before analysis, the screen shows an explicit empty state asking the user to paste an argument. It must not display sample findings as real results.
 
 Detected fallacies must come from actual analysis results, not static sample cards.
 
@@ -376,9 +440,9 @@ Settings should be calm and utilitarian. Configuration success and errors must b
 Primary bottom navigation should expose the main destinations:
 
 - Home
-- Debates or History
+- History
 - Tools
-- Profile or Settings, depending on current product decision
+- Settings
 
 The Tools section should be its own page, not only a cluster of home cards. It should include:
 
@@ -386,6 +450,15 @@ The Tools section should be its own page, not only a cluster of home cards. It s
 - Rebuttal Trainer
 - Fallacy Detector
 - AI Hallucination Detector external link
+
+The current bottom navigation decision is final for this build:
+
+- Home
+- History
+- Tools
+- Settings
+
+Do not show `Profile` unless account or cloud identity features are implemented.
 
 Navigation cards and buttons should not imply unavailable functionality.
 

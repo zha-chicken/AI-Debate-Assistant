@@ -22,6 +22,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.DebateMode
 import com.aidebate.domain.model.HistoryItem
 import com.aidebate.domain.model.SessionStatus
+import com.aidebate.presentation.common.TopLevelBottomBar
+import com.aidebate.presentation.common.TopLevelDestination
 import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
 import java.text.SimpleDateFormat
@@ -36,6 +38,7 @@ fun DebateHistoryScreen(
     onHome: () -> Unit = onBack,
     onTools: () -> Unit = {},
     onSettings: () -> Unit = {},
+    onStartDebate: () -> Unit = onHome,
     viewModel: DebateHistoryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -75,7 +78,7 @@ fun DebateHistoryScreen(
                     onHome = onHome,
                     onHistory = {},
                     onTools = onTools,
-                    onProfile = onSettings,
+                    onSettings = onSettings,
                 )
             }
         ) { padding ->
@@ -102,6 +105,15 @@ fun DebateHistoryScreen(
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
+                        Spacer(Modifier.height(Spacing.lg))
+                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                            Button(onClick = onStartDebate, colors = glassButtonColors()) {
+                                Text(t.startDebate)
+                            }
+                            OutlinedButton(onClick = onTools) {
+                                Text(t.toolsTitle)
+                            }
+                        }
                     }
                 }
             } else {
@@ -370,34 +382,15 @@ private fun HistoryBottomBar(
     onHome: () -> Unit,
     onHistory: () -> Unit,
     onTools: () -> Unit,
-    onProfile: () -> Unit,
+    onSettings: () -> Unit,
 ) {
-    val t = LocalTranslation.current
-    Row(
-        modifier = Modifier
-            .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
-            .fillMaxWidth()
-            .height(58.dp)
-            .background(GlassSurfaceStrong, Radii.largeShape)
-            .padding(horizontal = Spacing.md),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        HistoryBottomItem(Icons.Filled.Home, t.homeTab, false, onHome)
-        HistoryBottomItem(Icons.Filled.History, t.debatesTab, true, onHistory)
-        HistoryBottomItem(Icons.Filled.AccountTree, t.toolsTab, false, onTools)
-        HistoryBottomItem(Icons.Filled.Person, t.profileTab, false, onProfile)
-    }
-}
-
-@Composable
-private fun HistoryBottomItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, contentDescription = label, tint = if (selected) WarmGlow else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f), modifier = Modifier.size(20.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = if (selected) WarmGlow else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f))
-        }
-    }
+    TopLevelBottomBar(
+        selected = TopLevelDestination.History,
+        onHome = onHome,
+        onHistory = onHistory,
+        onTools = onTools,
+        onSettings = onSettings,
+    )
 }
 
 private fun formatDate(timestamp: Long): String {

@@ -129,7 +129,10 @@ fun ArgumentMapScreen(
                 .padding(padding)
         ) {
             if (uiState.nodes.isEmpty() && !uiState.isGenerating) {
-                EmptyState(onGenerate = { viewModel.generateMap() })
+                EmptyState(
+                    onGenerate = { viewModel.generateMap() },
+                    onAddClaim = { viewModel.showAddDialog(NodeType.PRO) }
+                )
             } else {
                 Canvas(
                     modifier = Modifier
@@ -264,7 +267,7 @@ fun ArgumentMapScreen(
 }
 
 @Composable
-private fun EmptyState(onGenerate: () -> Unit) {
+private fun EmptyState(onGenerate: () -> Unit, onAddClaim: () -> Unit) {
     val pulse by rememberInfiniteTransition(label = "empty").animateFloat(
         0.85f, 1f, infiniteRepeatable(tween(1500, easing = EaseInOutCubic), RepeatMode.Reverse), label = "p"
     )
@@ -281,14 +284,21 @@ private fun EmptyState(onGenerate: () -> Unit) {
         Text(t.noMapYet,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
-        Text(t.generateMap,
+        Text("Generate a graph from this topic or add your first claim manually.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
         Spacer(Modifier.height(24.dp))
-        Button(onClick = onGenerate, shape = RoundedCornerShape(12.dp)) {
-            Icon(Icons.Filled.AutoAwesome, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(t.generateWithAi)
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            Button(onClick = onGenerate, shape = RoundedCornerShape(12.dp)) {
+                Icon(Icons.Filled.AutoAwesome, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(t.generateWithAi)
+            }
+            OutlinedButton(onClick = onAddClaim, shape = RoundedCornerShape(12.dp)) {
+                Icon(Icons.Filled.Add, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(t.addArgument)
+            }
         }
     }
 }

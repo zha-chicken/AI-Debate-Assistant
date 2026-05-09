@@ -62,9 +62,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aidebate.presentation.common.TopLevelBottomBar
+import com.aidebate.presentation.common.TopLevelDestination
 import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.AiBackdrop
 import com.aidebate.presentation.theme.GlassCard
+import com.aidebate.presentation.theme.GlassCardLevel
 import com.aidebate.presentation.theme.GlassSurfaceStrong
 import com.aidebate.presentation.theme.Primary
 import com.aidebate.presentation.theme.Radii
@@ -121,7 +124,7 @@ fun HomeScreen(
                     onHome = {},
                     onHistory = onHistory,
                     onTools = onTools,
-                    onProfile = onSettings,
+                    onSettings = onSettings,
                 )
             }
         ) { padding ->
@@ -149,6 +152,11 @@ fun HomeScreen(
                 Spacer(Modifier.height(Spacing.md))
                 SupportStrip(onDonation)
                 Spacer(Modifier.height(Spacing.lg))
+
+                if (stats.debateCount == 0) {
+                    FirstDebateCard(onNewDebate)
+                    Spacer(Modifier.height(Spacing.lg))
+                }
 
                 SectionHeader(t.sectionDebateActions)
                 Row(
@@ -319,6 +327,36 @@ private fun SupportStrip(onDonation: () -> Unit) {
 }
 
 @Composable
+private fun FirstDebateCard(onNewDebate: () -> Unit) {
+    val t = LocalTranslation.current
+    GlassCard(
+        onClick = onNewDebate,
+        accent = Primary,
+        level = GlassCardLevel.PageGroup,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(46.dp).softCircle(Primary.copy(alpha = 0.22f)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.Forum, null, tint = Primary)
+            }
+            Spacer(Modifier.width(Spacing.md))
+            Column(Modifier.weight(1f)) {
+                Text(t.newDebate, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Choose a topic and practice structured argumentation.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f)
+                )
+            }
+            Icon(Icons.Filled.ChevronRight, null, tint = Primary.copy(alpha = 0.78f))
+        }
+    }
+}
+
+@Composable
 private fun ActionTile(
     title: String,
     subtitle: String,
@@ -383,32 +421,13 @@ private fun HomeBottomBar(
     onHome: () -> Unit,
     onHistory: () -> Unit,
     onTools: () -> Unit,
-    onProfile: () -> Unit,
+    onSettings: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
-            .fillMaxWidth()
-            .height(58.dp)
-            .background(GlassSurfaceStrong, Radii.largeShape)
-            .padding(horizontal = Spacing.md),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        val t = LocalTranslation.current
-        BottomItem(Icons.Filled.Forum, t.homeTab, true, onHome)
-        BottomItem(Icons.Filled.History, t.debatesTab, false, onHistory)
-        BottomItem(Icons.Filled.AccountTree, t.toolsTab, false, onTools)
-        BottomItem(Icons.Filled.Shield, t.profileTab, false, onProfile)
-    }
-}
-
-@Composable
-private fun BottomItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, contentDescription = label, tint = if (selected) WarmGlow else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f), modifier = Modifier.size(20.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = if (selected) WarmGlow else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f))
-        }
-    }
+    TopLevelBottomBar(
+        selected = TopLevelDestination.Home,
+        onHome = onHome,
+        onHistory = onHistory,
+        onTools = onTools,
+        onSettings = onSettings,
+    )
 }

@@ -15,11 +15,19 @@ import androidx.compose.animation.core.spring
 
 // ---- Timing ----
 object MotionDuration {
+    val short = 120
+    val medium = 220
+    val long = 360
     val instant = 150
     val fast = 250
     val normal = 400
     val slow = 600
     val deliberate = 800
+}
+
+object MotionScale {
+    const val CardPressScale = 0.98f
+    const val ButtonPressScale = 0.96f
 }
 
 // ---- Easing Curves ----
