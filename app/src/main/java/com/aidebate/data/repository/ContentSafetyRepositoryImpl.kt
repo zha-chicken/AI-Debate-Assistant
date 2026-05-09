@@ -40,7 +40,14 @@ class ContentSafetyRepositoryImpl @Inject constructor(
         if (normalized.isBlank()) return
 
         val localReasons = detectLocalPolicyViolations(normalized)
-        val apiReasons = checkProviderSafety(normalized, preferredConfig)
+        val apiReasons = try {
+            checkProviderSafety(normalized, preferredConfig)
+        } catch (_: Exception) {
+            throw ContentSafetyException(
+                result = ContentSafetyResult(isAllowed = false, serviceFailed = true),
+                source = source
+            )
+        }
         val reasons = (localReasons + apiReasons).distinct()
 
         if (reasons.isNotEmpty()) {
@@ -58,7 +65,7 @@ class ContentSafetyRepositoryImpl @Inject constructor(
         val config = preferredConfig?.takeIf { it.canRunSafetyCheck() }
             ?: providerConfigRepository.getConfig(AiProvider.OPENAI)?.takeIf { it.canRunSafetyCheck() }
             ?: providerConfigRepository.getEnabledConfigs().first().firstOrNull { it.canRunSafetyCheck() }
-            ?: return listOf("An API key is required for content safety checks")
+            ?: throw IllegalStateException("No API key available for content safety checks")
 
         return if (config.provider == AiProvider.OPENAI) {
             checkOpenAiSafety(text, config)
@@ -70,17 +77,7 @@ class ContentSafetyRepositoryImpl @Inject constructor(
     private suspend fun checkOpenAiSafety(text: String, config: ProviderConfig): List<String> {
         val reasons = mutableSetOf<String>()
         text.chunked(MAX_MODERATION_CHARS).forEach { chunk ->
-            val moderationReasons = runCatching {
-                checkModerationEndpoint(chunk, config.apiKey)
-            }.getOrNull()
-
-            val chunkReasons = moderationReasons ?: runCatching {
-                checkChunkWithProviderChat(chunk, config)
-            }.getOrElse {
-                listOf("content safety check failed")
-            }
-
-            reasons += chunkReasons
+            reasons += checkModerationEndpoint(chunk, config.apiKey)
         }
         return reasons.toList()
     }
@@ -88,12 +85,7 @@ class ContentSafetyRepositoryImpl @Inject constructor(
     private suspend fun checkWithProviderChat(text: String, config: ProviderConfig): List<String> {
         val reasons = mutableSetOf<String>()
         text.chunked(MAX_MODERATION_CHARS).forEach { chunk ->
-            val chunkReasons = runCatching {
-                checkChunkWithProviderChat(chunk, config)
-            }.getOrElse {
-                listOf("content safety check failed")
-            }
-            reasons += chunkReasons
+            reasons += checkChunkWithProviderChat(chunk, config)
         }
         return reasons.toList()
     }
@@ -170,6 +162,9 @@ class ContentSafetyRepositoryImpl @Inject constructor(
             .removeSuffix("```")
             .trim()
         val obj = JSONObject(cleanJson)
+        if (!obj.has("allowed")) {
+            throw IllegalStateException("Safety classifier returned no allowed field")
+        }
         val categories = obj.optJSONArray("categories") ?: JSONArray()
         val reasons = (0 until categories.length())
             .mapNotNull { index -> fallbackCategoryLabel(categories.optString(index)) }
