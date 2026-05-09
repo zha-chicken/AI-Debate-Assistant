@@ -15,14 +15,12 @@ class ContentSafetyException(
     source: ContentSafetySource
 ) : Exception(
     buildString {
-        append("内容安全拦截")
-        append(if (source == ContentSafetySource.USER_PROMPT) "：你的输入" else "：AI 回答")
-        append("包含不允许的内容")
+        append(if (source == ContentSafetySource.USER_PROMPT) "Your input" else "The AI response")
+        append(" was blocked by content safety")
         if (result.reasons.isNotEmpty()) {
-            append("（")
-            append(result.reasons.joinToString("、"))
-            append("）")
+            append(": ")
+            append(result.reasons.joinToString(", "))
         }
-        append("。")
+        append(".")
     }
 )
