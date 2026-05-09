@@ -63,13 +63,15 @@ class ArgumentMapRepositoryImpl @Inject constructor(
         val topic = topicRepository.getTopic(topicId) ?: throw Exception("Topic not found")
         val configs = providerConfigRepository.getEnabledConfigs().first()
         val config = configs.firstOrNull() ?: throw Exception("No AI provider configured")
-        val adapter = adapterFactory.getAdapter(config.provider)
+        val aiAdapter = adapterFactory.getAdapter(config.provider)
+        val chatConfig = ChatConfig(model = config.modelName.ifBlank { "gpt-4o" })
 
         val prompt = buildString {
             append("You are helping a debater prepare. Create an argument relationship graph for the topic: \"${topic.title}\".\n")
             append("Return ONLY valid JSON with this exact shape:\n")
             append("{\"nodes\":[{\"localId\":\"pro1\",\"title\":\"short title\",\"type\":\"PRO\",\"content\":\"1-2 sentence explanation\"}],")
             append("\"edges\":[{\"from\":\"pro1\",\"to\":\"con1\",\"relation\":\"REFUTES\"}]}\n")
+            append("Use exactly these node IDs: pro1, pro2, pro3, con1, con2, con3, ev1, ev2.\n")
             append("Rules:\n")
             append("- Include 3 PRO nodes and 3 CON nodes.\n")
             append("- Include 2 EVIDENCE nodes that support the strongest PRO or CON arguments.\n")
@@ -81,26 +83,38 @@ class ArgumentMapRepositoryImpl @Inject constructor(
             append("- Return no markdown and no commentary.")
         }
 
-        val result = adapter.chat(
+        val result = aiAdapter.chat(
             systemPrompt = "You are a debate preparation assistant. Always return valid JSON.",
             conversationHistory = listOf(ChatMessage("user", prompt)),
-            config = ChatConfig(model = config.modelName.ifBlank { "gpt-4o" }),
+            config = chatConfig,
             providerConfig = config
         )
 
-        return parseArgumentJson(result.content, topicId)
+        return runCatching {
+            parseArgumentJson(result.content, topicId)
+        }.getOrElse {
+            val repairedJson = repairArgumentJson(
+                invalidJson = result.content,
+                aiAdapter = aiAdapter,
+                chatConfig = chatConfig,
+                providerConfig = config
+            )
+            runCatching {
+                parseArgumentJson(repairedJson, topicId)
+            }.getOrElse { repairError ->
+                throw Exception("AI returned invalid graph JSON. Please regenerate. ${repairError.message ?: ""}".trim())
+            }
+        }
     }
 
     private fun parseArgumentJson(json: String, topicId: String): ArgumentGraph {
-        val cleanedJson = json.trim()
-            .removePrefix("```json").removePrefix("```")
-            .removeSuffix("```").trim()
+        val cleanedJson = extractJsonObject(json)
 
         val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
         val mapType = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
         val adapter = moshi.adapter<Map<String, Any>>(mapType)
-        val parsed = adapter.fromJson(cleanedJson) ?: return ArgumentGraph(emptyList(), emptyList())
-        val parsedNodes = parsed["nodes"] as? List<*> ?: return ArgumentGraph(emptyList(), emptyList())
+        val parsed = adapter.fromJson(cleanedJson) ?: throw IllegalArgumentException("Empty graph JSON")
+        val parsedNodes = parsed["nodes"] as? List<*> ?: throw IllegalArgumentException("Missing graph nodes")
         val parsedEdges = parsed["edges"] as? List<*> ?: emptyList<Any>()
 
         val nodes = mutableListOf<ArgumentNode>()
@@ -150,7 +164,7 @@ class ArgumentMapRepositoryImpl @Inject constructor(
             nodes.add(node)
         }
 
-        val edges = parsedEdges.mapNotNull { raw ->
+        val parsedArgumentEdges = parsedEdges.mapNotNull { raw ->
             val map = raw as? Map<*, *> ?: return@mapNotNull null
             val fromLocalId = map["from"]?.toString() ?: return@mapNotNull null
             val toLocalId = map["to"]?.toString() ?: return@mapNotNull null
@@ -169,8 +183,73 @@ class ArgumentMapRepositoryImpl @Inject constructor(
                 relation = relation
             )
         }.distinctBy { "${it.fromNodeId}:${it.toNodeId}:${it.relation}" }
+        val edges = parsedArgumentEdges.ifEmpty { inferDefaultEdges(topicId, nodes) }
 
         return ArgumentGraph(nodes = nodes, edges = edges)
+    }
+
+    private suspend fun repairArgumentJson(
+        invalidJson: String,
+        aiAdapter: AiProviderAdapter,
+        chatConfig: ChatConfig,
+        providerConfig: ProviderConfig
+    ): String {
+        val repairPrompt = buildString {
+            append("Repair the following invalid JSON into valid JSON only.\n")
+            append("The output must have exactly this shape:\n")
+            append("{\"nodes\":[{\"localId\":\"pro1\",\"title\":\"...\",\"type\":\"PRO\",\"content\":\"...\"}],")
+            append("\"edges\":[{\"from\":\"pro1\",\"to\":\"con1\",\"relation\":\"REFUTES\"}]}\n")
+            append("Allowed localId values: pro1, pro2, pro3, con1, con2, con3, ev1, ev2.\n")
+            append("Allowed node types: PRO, CON, EVIDENCE.\n")
+            append("Allowed edge relations: SUPPORTS, REFUTES, RELATES.\n")
+            append("Return no markdown and no commentary.\n\n")
+            append(invalidJson)
+        }
+        return aiAdapter.chat(
+            systemPrompt = "You repair malformed JSON. Return valid JSON only.",
+            conversationHistory = listOf(ChatMessage("user", repairPrompt)),
+            config = chatConfig,
+            providerConfig = providerConfig
+        ).content
+    }
+
+    private fun extractJsonObject(raw: String): String {
+        val trimmed = raw.trim()
+            .removePrefix("```json")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
+        val start = trimmed.indexOf('{')
+        val end = trimmed.lastIndexOf('}')
+        if (start < 0 || end <= start) {
+            throw IllegalArgumentException("No JSON object found")
+        }
+        return trimmed.substring(start, end + 1)
+    }
+
+    private fun inferDefaultEdges(topicId: String, nodes: List<ArgumentNode>): List<ArgumentEdge> {
+        val pros = nodes.filter { it.type == NodeType.PRO }
+        val cons = nodes.filter { it.type == NodeType.CON }
+        val evidence = nodes.filter { it.type == NodeType.EVIDENCE }
+        val edges = mutableListOf<ArgumentEdge>()
+
+        pros.zip(cons).forEach { (pro, con) ->
+            edges.add(ArgumentEdge(topicId = topicId, fromNodeId = pro.id, toNodeId = con.id, relation = EdgeRelation.REFUTES))
+            edges.add(ArgumentEdge(topicId = topicId, fromNodeId = con.id, toNodeId = pro.id, relation = EdgeRelation.REFUTES))
+        }
+        evidence.forEachIndexed { index, evidenceNode ->
+            val target = (pros + cons).getOrNull(index) ?: pros.firstOrNull() ?: cons.firstOrNull()
+            if (target != null) {
+                edges.add(ArgumentEdge(topicId = topicId, fromNodeId = evidenceNode.id, toNodeId = target.id, relation = EdgeRelation.SUPPORTS))
+            }
+        }
+        if (pros.size > 1) {
+            edges.add(ArgumentEdge(topicId = topicId, fromNodeId = pros[0].id, toNodeId = pros[1].id, relation = EdgeRelation.RELATES))
+        }
+        if (cons.size > 1) {
+            edges.add(ArgumentEdge(topicId = topicId, fromNodeId = cons[0].id, toNodeId = cons[1].id, relation = EdgeRelation.RELATES))
+        }
+        return edges.distinctBy { "${it.fromNodeId}:${it.toNodeId}:${it.relation}" }
     }
 }
 
