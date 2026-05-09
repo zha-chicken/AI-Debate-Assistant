@@ -150,6 +150,14 @@ fun ConversationUnit(
                 }
             }
 
+            // AI-generated content disclaimer
+            if (!isUser) {
+                AiGeneratedDisclaimer(
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = tokens.color.onContainer.copy(alpha = 0.52f)
+                )
+            }
+
             // Provider attribution
             if (turn.providerUsed != null) {
                 Text(
@@ -245,6 +253,10 @@ private fun ScoreBadge(overall: Int, rationale: String) {
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
+            AiGeneratedDisclaimer(
+                modifier = Modifier.padding(top = 2.dp),
+                color = scoreColor.copy(alpha = 0.62f)
+            )
         }
     }
 }
@@ -306,6 +318,10 @@ private fun HighlightQuote(highlight: ArgumentHighlight) {
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
+                AiGeneratedDisclaimer(
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = highlightColor.copy(alpha = 0.62f)
+                )
             }
         }
     }

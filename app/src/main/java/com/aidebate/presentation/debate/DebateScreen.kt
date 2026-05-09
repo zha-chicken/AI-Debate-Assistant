@@ -518,6 +518,10 @@ fun CelebrationEndCard(
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
                         )
+                        AiGeneratedDisclaimer(
+                            modifier = Modifier.padding(top = 4.dp),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.56f)
+                        )
                     }
                     Spacer(Modifier.height(Spacing.lg))
                     OutlinedButton(onClick = onViewResult) {

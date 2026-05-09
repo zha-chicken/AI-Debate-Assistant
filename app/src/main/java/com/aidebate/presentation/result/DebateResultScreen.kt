@@ -32,6 +32,7 @@ import com.aidebate.domain.model.DebateTurn
 import com.aidebate.domain.model.DebateMode
 import com.aidebate.domain.model.DebateSession
 import com.aidebate.domain.model.SpeakerRole
+import com.aidebate.presentation.common.AiGeneratedDisclaimer
 import com.aidebate.presentation.common.GlowWrapper
 import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
@@ -222,6 +223,10 @@ private fun WinnerCard(
                                 textAlign = TextAlign.Center,
                                 color = RhetorixTextColors.Secondary
                             )
+                            AiGeneratedDisclaimer(
+                                modifier = Modifier.padding(top = 4.dp),
+                                color = RhetorixTextColors.Secondary.copy(alpha = 0.6f)
+                            )
                         }
                     } else {
                         Text(
@@ -411,6 +416,12 @@ private fun TurnCard(turn: DebateTurn) {
                 }
                 Spacer(Modifier.height(Spacing.xs))
                 Text(turn.content, style = MaterialTheme.typography.bodyMedium)
+                if (turn.speakerRole != SpeakerRole.USER) {
+                    AiGeneratedDisclaimer(
+                        modifier = Modifier.padding(top = 4.dp),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.52f)
+                    )
+                }
             }
         }
     }

@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.aidebate.domain.model.FallacyReference
 import com.aidebate.domain.model.FallacyResult
+import com.aidebate.presentation.common.AiGeneratedDisclaimer
 import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -191,8 +192,14 @@ private fun MainContent(
                         Row(Modifier.fillMaxWidth().padding(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Filled.CheckCircle, null, tint = SuccessGreen)
                             Spacer(Modifier.width(Spacing.md))
-                            Text(t.noFallacies,
-                                style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                            Column(Modifier.weight(1f)) {
+                                Text(t.noFallacies,
+                                    style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                                AiGeneratedDisclaimer(
+                                    modifier = Modifier.padding(top = 4.dp),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.56f)
+                                )
+                            }
                         }
                     }
                 } else {
@@ -330,6 +337,10 @@ private fun StaggeredResultCard(result: FallacyResult, index: Int, delayMs: Long
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.75f),
                     lineHeight = MaterialTheme.typography.bodySmall.lineHeight)
+                AiGeneratedDisclaimer(
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.56f)
+                )
             }
         }
     }

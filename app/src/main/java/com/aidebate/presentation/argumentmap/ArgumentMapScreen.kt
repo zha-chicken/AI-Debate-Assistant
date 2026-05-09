@@ -37,6 +37,7 @@ import com.aidebate.domain.model.ArgumentMapDebateTurn
 import com.aidebate.domain.model.ArgumentNode
 import com.aidebate.domain.model.EdgeRelation
 import com.aidebate.domain.model.NodeType
+import com.aidebate.presentation.common.AiGeneratedDisclaimer
 import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
 import kotlin.math.atan2
@@ -218,6 +219,19 @@ fun ArgumentMapScreen(
                         .align(Alignment.BottomCenter)
                         .padding(Spacing.lg)
                 )
+            } else if (uiState.nodes.isNotEmpty() && !uiState.isGenerating) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(Spacing.lg),
+                    shape = Radii.smallShape,
+                    color = GlassSurfaceStrong.copy(alpha = 0.72f)
+                ) {
+                    AiGeneratedDisclaimer(
+                        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f)
+                    )
+                }
             }
 
             // Loading overlay
@@ -383,13 +397,18 @@ private fun DebatePreviewRow(turn: ArgumentMapDebateTurn) {
                 )
             }
             Spacer(Modifier.width(Spacing.md))
-            Text(
-                turn.content,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f),
-                maxLines = 3
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    turn.content,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f),
+                    maxLines = 3
+                )
+                AiGeneratedDisclaimer(
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.52f)
+                )
+            }
         }
     }
 }
@@ -472,6 +491,10 @@ private fun SelectedNodePanel(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
                 )
             }
+            AiGeneratedDisclaimer(
+                modifier = Modifier.padding(top = 4.dp),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.52f)
+            )
         }
     }
 }

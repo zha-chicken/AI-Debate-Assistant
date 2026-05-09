@@ -545,6 +545,22 @@ When content is blocked in the live debate screen:
 
 Other AI tool screens should surface the same safety message through their existing error state if a dedicated dialog is not present.
 
+## AI Content Disclaimer
+
+Every visible AI-generated content block must include a small italic disclaimer directly below the generated text:
+
+`内容由AI生成，仅供参考 AI-generated, for reference only`
+
+Apply this to:
+
+- AI debate responses
+- AI judging summaries and result explanations
+- Argument Relationship Graph generated nodes and generation debate previews
+- Fallacy detection result explanations
+- Rebuttal trainer generated prompts, scores, feedback, breakdowns, advice, and AI chat replies
+
+The disclaimer should use low-emphasis white text on dark surfaces and should not compete with the primary content.
+
 ## Accessibility and Practical Constraints
 
 The UI should remain usable on small Android phones.

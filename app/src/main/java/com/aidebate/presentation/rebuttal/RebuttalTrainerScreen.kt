@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aidebate.presentation.common.AiGeneratedDisclaimer
 import com.aidebate.presentation.common.RolePill
 import com.aidebate.presentation.theme.*
 import com.aidebate.domain.model.RebuttalChatMessage
@@ -236,6 +237,10 @@ private fun ReadyPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrain
                 Text(uiState.promptArgument,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSecondaryContainer)
+                AiGeneratedDisclaimer(
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.56f)
+                )
             }
         }
 
@@ -332,8 +337,14 @@ private fun RespondingPhase(uiState: RebuttalTrainerUiState, viewModel: Rebuttal
 
             // Prompt preview
             GlassCard(modifier = Modifier.fillMaxWidth(), accent = Primary) {
-                Text(uiState.promptArgument, Modifier.padding(Spacing.md),
-                    style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                Column(Modifier.padding(Spacing.md)) {
+                    Text(uiState.promptArgument,
+                        style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                    AiGeneratedDisclaimer(
+                        modifier = Modifier.padding(top = 4.dp),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.52f)
+                    )
+                }
             }
 
             Spacer(Modifier.height(Spacing.md))
@@ -436,6 +447,10 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold, color = gradeColor)
                 }
+                AiGeneratedDisclaimer(
+                    modifier = Modifier.padding(top = 6.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.56f)
+                )
             }
         }
 
@@ -462,6 +477,10 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
                 Spacer(Modifier.height(Spacing.sm))
                 Text(attempt.feedback, style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer)
+                AiGeneratedDisclaimer(
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.56f)
+                )
             }
         }
 
@@ -511,6 +530,10 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
                         Text(uiState.explanation!!.overallAdvice,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onTertiaryContainer)
+                        AiGeneratedDisclaimer(
+                            modifier = Modifier.padding(top = 4.dp),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.56f)
+                        )
                     }
                 }
                 Spacer(Modifier.height(Spacing.sm))
@@ -528,6 +551,10 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
                         Text(uiState.explanation!!.keyTakeaway,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        AiGeneratedDisclaimer(
+                            modifier = Modifier.padding(top = 4.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.56f)
+                        )
                     }
                 }
                 Spacer(Modifier.height(Spacing.lg))
@@ -620,6 +647,10 @@ private fun AnimatedScoreChip(label: String, score: Int, modifier: Modifier = Mo
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
             Text(t.scoreDivider, style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
+            AiGeneratedDisclaimer(
+                modifier = Modifier.padding(top = 2.dp),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.44f)
+            )
         }
     }
 }
@@ -698,6 +729,10 @@ private fun BreakdownCard(breakdown: ScoreBreakdown) {
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
                 }
             }
+            AiGeneratedDisclaimer(
+                modifier = Modifier.padding(top = 4.dp),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.52f)
+            )
         }
     }
 }
@@ -725,9 +760,15 @@ private fun ChatBubble(msg: RebuttalChatMessage) {
             ),
             color = bgColor
         ) {
-            Text(msg.content,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                style = MaterialTheme.typography.bodyMedium)
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Text(msg.content, style = MaterialTheme.typography.bodyMedium)
+                if (!isUser) {
+                    AiGeneratedDisclaimer(
+                        modifier = Modifier.padding(top = 4.dp),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.52f)
+                    )
+                }
+            }
         }
     }
 }

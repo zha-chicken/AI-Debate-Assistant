@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.SpeakerRole
 import com.aidebate.domain.model.StructuredPhase
+import com.aidebate.presentation.common.AiGeneratedDisclaimer
 import com.aidebate.presentation.common.toDebateRole
 import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
@@ -549,6 +550,10 @@ private fun CompleteWithResult(
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                    )
+                    AiGeneratedDisclaimer(
+                        modifier = Modifier.padding(top = 4.dp),
+                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.56f)
                     )
                 }
 
