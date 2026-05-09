@@ -395,6 +395,9 @@ Visual rules:
 - Related/neutral relationships can use muted amber
 - Arrows should show direction clearly
 - Labels must remain readable on the dark background
+- Node spacing should prioritize readable titles over fitting everything tightly.
+- Initial graph scale may be smaller so the full relationship structure is visible without title overlap.
+- Node titles should wrap to short two-line labels when possible instead of overlapping nearby nodes.
 
 ### Fallacy Detector
 

@@ -192,11 +192,11 @@ class ArgumentMapRepositoryImpl @Inject constructor(
 
         val nodes = mutableListOf<ArgumentNode>()
         val localIdToNodeId = mutableMapOf<String, String>()
-        val proX = 300f
-        val conX = -300f
+        val proX = 430f
+        val conX = -430f
         val evidenceX = 0f
-        val startY = -260f
-        val yGap = 150f
+        val startY = -360f
+        val yGap = 220f
 
         parsedNodes.forEachIndexed { index, raw ->
             val map = raw as? Map<*, *> ?: return@forEachIndexed
@@ -225,7 +225,7 @@ class ArgumentMapRepositoryImpl @Inject constructor(
             val y = when (type) {
                 NodeType.PRO -> startY + proCount * yGap
                 NodeType.CON -> startY + conCount * yGap
-                NodeType.EVIDENCE -> startY + evidenceCount * yGap + 45f
+                NodeType.EVIDENCE -> startY + evidenceCount * yGap + 110f
                 NodeType.TOPIC -> 0f
             }
 
@@ -287,8 +287,8 @@ class ArgumentMapRepositoryImpl @Inject constructor(
                 type = if (isPro) NodeType.PRO else NodeType.CON,
                 title = summarizeTitle(turn.content, if (isPro) "Pro claim" else "Counter claim"),
                 content = turn.content,
-                xPosition = if (isPro) 300f else -300f,
-                yPosition = -260f + (turn.round - 1) * 170f
+                xPosition = if (isPro) 430f else -430f,
+                yPosition = -340f + (turn.round - 1) * 230f
             )
             nodes.add(claimNode)
             sideMap[if (isPro) "PRO" else "CON"] = claimNode
@@ -299,8 +299,8 @@ class ArgumentMapRepositoryImpl @Inject constructor(
                     type = NodeType.EVIDENCE,
                     title = "Round ${turn.round} ${if (isPro) "support" else "challenge"}",
                     content = "Evidence extracted from the ${if (isPro) "pro" else "con"} turn: ${turn.content.take(180)}",
-                    xPosition = if (isPro) 85f else -85f,
-                    yPosition = -205f + index * 82f
+                    xPosition = if (isPro) 125f else -125f,
+                    yPosition = -270f + index * 115f
                 )
             )
         }

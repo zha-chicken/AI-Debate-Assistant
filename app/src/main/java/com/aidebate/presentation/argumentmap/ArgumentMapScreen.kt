@@ -55,7 +55,7 @@ fun ArgumentMapScreen(
 
     LaunchedEffect(topicId) { viewModel.initialize(topicId) }
 
-    var scale by remember { mutableFloatStateOf(1f) }
+    var scale by remember { mutableFloatStateOf(0.78f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     val transformState = rememberTransformableState { zoomChange, panChange, _ ->
         scale = (scale * zoomChange).coerceIn(0.25f, 3.5f)
@@ -145,7 +145,7 @@ fun ArgumentMapScreen(
                         .pointerInput(uiState.nodes) {
                             detectTapGestures { tapOffset ->
                                 val center = Offset(size.width / 2f, size.height / 2f)
-                                val hitRadius = 46f * scale
+                                val hitRadius = 62f * scale
                                 val hitNode = uiState.nodes.find { node ->
                                     val nx = center.x + node.xPosition * scale + offset.x
                                     val ny = center.y + node.yPosition * scale + offset.y
@@ -532,7 +532,7 @@ private fun DrawScope.drawNode(
     title: String, x: Float, y: Float,
     color: Color, isSelected: Boolean, scale: Float
 ) {
-    val baseRadius = 36f
+    val baseRadius = 42f
     val radius = if (isSelected) baseRadius * 1.15f else baseRadius
     // Shadow ring for selected
     if (isSelected) {
@@ -557,15 +557,44 @@ private fun DrawScope.drawNode(
     )
 
     // Title text
-    val displayTitle = if (title.length > 14) title.take(13) + "…" else title
+    val titleLines = splitNodeTitle(title)
     val textPaint = android.graphics.Paint().apply {
         this.color = android.graphics.Color.WHITE
-        textSize = (24f * scale.coerceIn(0.6f, 1.5f))
+        textSize = (19f * scale.coerceIn(0.7f, 1.25f))
         isAntiAlias = true
         isFakeBoldText = true
         textAlign = android.graphics.Paint.Align.CENTER
     }
-    drawContext.canvas.nativeCanvas.drawText(displayTitle, x, y + 8f * scale, textPaint)
+    val lineHeight = 20f * scale.coerceIn(0.7f, 1.25f)
+    val firstY = y - ((titleLines.size - 1) * lineHeight / 2f) + 6f * scale
+    titleLines.forEachIndexed { index, line ->
+        drawContext.canvas.nativeCanvas.drawText(line, x, firstY + index * lineHeight, textPaint)
+    }
+}
+
+private fun splitNodeTitle(title: String): List<String> {
+    val clean = title.trim().ifBlank { "Argument" }
+    val words = clean.split(Regex("\\s+")).filter { it.isNotBlank() }
+    if (words.isEmpty()) return listOf("Argument")
+    if (words.size == 1) {
+        val word = words.first()
+        return if (word.length <= 11) listOf(word) else listOf(word.take(10) + "…")
+    }
+    val lines = mutableListOf<String>()
+    var current = ""
+    words.forEach { word ->
+        val candidate = if (current.isBlank()) word else "$current $word"
+        if (candidate.length <= 11) {
+            current = candidate
+        } else {
+            lines.add(current.ifBlank { word.take(10) + "…" })
+            current = word
+        }
+    }
+    if (current.isNotBlank()) lines.add(current)
+    return lines.take(2).mapIndexed { index, line ->
+        if (index == 1 && lines.size > 2) line.take(10) + "…" else line.take(12)
+    }
 }
 
 @Composable
