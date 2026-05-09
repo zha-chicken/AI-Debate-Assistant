@@ -361,6 +361,8 @@ Generation behavior:
 - The relationship graph should then be extracted from that debate transcript, not from a shallow one-shot pro/con list.
 - The generated graph should include multiple pro claims, con objections, evidence nodes, and directed relationships.
 - The graph should aim for at least 12 meaningful relationships when AI generation succeeds.
+- A generated graph with too few nodes or relationships is treated as invalid.
+- If AI graph extraction fails after the debate succeeds, Rhetorix builds a fallback graph from the 3-round debate transcript instead of returning to an empty screen.
 
 Loading state:
 

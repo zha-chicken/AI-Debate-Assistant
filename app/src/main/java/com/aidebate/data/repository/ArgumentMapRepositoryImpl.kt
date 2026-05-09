@@ -139,7 +139,7 @@ class ArgumentMapRepositoryImpl @Inject constructor(
         )
 
         return runCatching {
-            parseArgumentJson(result.content, topicId)
+            parseArgumentJson(result.content, topicId).validated()
         }.getOrElse {
             val repairedJson = repairArgumentJson(
                 invalidJson = result.content,
@@ -148,9 +148,13 @@ class ArgumentMapRepositoryImpl @Inject constructor(
                 providerConfig = config
             )
             runCatching {
-                parseArgumentJson(repairedJson, topicId)
-            }.getOrElse { repairError ->
-                throw Exception("AI returned invalid graph JSON. Please regenerate. ${repairError.message ?: ""}".trim())
+                parseArgumentJson(repairedJson, topicId).validated()
+            }.getOrElse {
+                if (debateTurns.isNotEmpty()) {
+                    buildFallbackGraphFromDebate(topicId, debateTurns)
+                } else {
+                    throw Exception("AI returned an empty graph. Please regenerate.")
+                }
             }
         }
     }
@@ -255,6 +259,98 @@ class ArgumentMapRepositoryImpl @Inject constructor(
         val edges = parsedArgumentEdges.ifEmpty { inferDefaultEdges(topicId, nodes) }
 
         return ArgumentGraph(nodes = nodes, edges = edges)
+    }
+
+    private fun ArgumentGraph.validated(): ArgumentGraph {
+        require(nodes.size >= 6) { "Graph contained too few nodes" }
+        require(edges.size >= 6) { "Graph contained too few relationships" }
+        require(nodes.any { it.type == NodeType.PRO }) { "Graph missing support claims" }
+        require(nodes.any { it.type == NodeType.CON }) { "Graph missing counterclaims" }
+        return this
+    }
+
+    private fun buildFallbackGraphFromDebate(
+        topicId: String,
+        debateTurns: List<ArgumentMapDebateTurn>
+    ): ArgumentGraph {
+        val sortedTurns = debateTurns
+            .sortedWith(compareBy<ArgumentMapDebateTurn> { it.round }.thenBy { if (it.side == "PRO") 0 else 1 })
+            .take(6)
+        val nodes = mutableListOf<ArgumentNode>()
+        val claimByTurn = mutableMapOf<Int, MutableMap<String, ArgumentNode>>()
+
+        sortedTurns.forEachIndexed { index, turn ->
+            val isPro = turn.side.equals("PRO", ignoreCase = true)
+            val sideMap = claimByTurn.getOrPut(turn.round) { mutableMapOf() }
+            val claimNode = ArgumentNode(
+                topicId = topicId,
+                type = if (isPro) NodeType.PRO else NodeType.CON,
+                title = summarizeTitle(turn.content, if (isPro) "Pro claim" else "Counter claim"),
+                content = turn.content,
+                xPosition = if (isPro) 300f else -300f,
+                yPosition = -260f + (turn.round - 1) * 170f
+            )
+            nodes.add(claimNode)
+            sideMap[if (isPro) "PRO" else "CON"] = claimNode
+
+            nodes.add(
+                ArgumentNode(
+                    topicId = topicId,
+                    type = NodeType.EVIDENCE,
+                    title = "Round ${turn.round} ${if (isPro) "support" else "challenge"}",
+                    content = "Evidence extracted from the ${if (isPro) "pro" else "con"} turn: ${turn.content.take(180)}",
+                    xPosition = if (isPro) 85f else -85f,
+                    yPosition = -205f + index * 82f
+                )
+            )
+        }
+
+        val edges = mutableListOf<ArgumentEdge>()
+        val claimNodes = nodes.filter { it.type == NodeType.PRO || it.type == NodeType.CON }
+        val evidenceNodes = nodes.filter { it.type == NodeType.EVIDENCE }
+
+        evidenceNodes.zip(claimNodes).forEach { (evidence, claim) ->
+            edges.add(
+                ArgumentEdge(
+                    topicId = topicId,
+                    fromNodeId = evidence.id,
+                    toNodeId = claim.id,
+                    relation = EdgeRelation.SUPPORTS
+                )
+            )
+        }
+
+        claimByTurn.values.forEach { roundClaims ->
+            val pro = roundClaims["PRO"]
+            val con = roundClaims["CON"]
+            if (pro != null && con != null) {
+                edges.add(ArgumentEdge(topicId = topicId, fromNodeId = con.id, toNodeId = pro.id, relation = EdgeRelation.REFUTES))
+                edges.add(ArgumentEdge(topicId = topicId, fromNodeId = pro.id, toNodeId = con.id, relation = EdgeRelation.REFUTES))
+            }
+        }
+
+        val pros = claimNodes.filter { it.type == NodeType.PRO }
+        val cons = claimNodes.filter { it.type == NodeType.CON }
+        pros.zipWithNext().forEach { (from, to) ->
+            edges.add(ArgumentEdge(topicId = topicId, fromNodeId = from.id, toNodeId = to.id, relation = EdgeRelation.RELATES))
+        }
+        cons.zipWithNext().forEach { (from, to) ->
+            edges.add(ArgumentEdge(topicId = topicId, fromNodeId = from.id, toNodeId = to.id, relation = EdgeRelation.RELATES))
+        }
+
+        return ArgumentGraph(
+            nodes = nodes,
+            edges = edges.distinctBy { "${it.fromNodeId}:${it.toNodeId}:${it.relation}" }
+        )
+    }
+
+    private fun summarizeTitle(content: String, fallback: String): String {
+        val words = content
+            .replace(Regex("[^A-Za-z0-9\\u4e00-\\u9fa5\\s-]"), " ")
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+            .take(5)
+        return words.joinToString(" ").ifBlank { fallback }
     }
 
     private suspend fun repairArgumentJson(

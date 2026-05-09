@@ -61,10 +61,20 @@ class ArgumentMapViewModel @Inject constructor(
                 val debateTurns = impl.generateThreeRoundDebate(_uiState.value.topicId)
                 _uiState.update { it.copy(generationDebateTurns = debateTurns) }
                 val graph = impl.generateArgumentMap(_uiState.value.topicId, debateTurns)
+                if (graph.nodes.isEmpty()) {
+                    throw IllegalStateException("AI generated an empty graph. Please try again.")
+                }
                 repository.deleteAllForTopic(_uiState.value.topicId)
                 graph.nodes.forEach { repository.saveNode(it) }
                 graph.edges.forEach { repository.saveEdge(it) }
-                _uiState.update { it.copy(isGenerating = false, generationDebateTurns = emptyList()) }
+                _uiState.update {
+                    it.copy(
+                        nodes = graph.nodes,
+                        edges = graph.edges,
+                        isGenerating = false,
+                        generationDebateTurns = emptyList()
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(isGenerating = false,
