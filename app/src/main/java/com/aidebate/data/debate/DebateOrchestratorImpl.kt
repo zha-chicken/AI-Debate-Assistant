@@ -8,6 +8,7 @@ import com.aidebate.domain.model.*
 import com.aidebate.domain.repository.DebateRepository
 import com.aidebate.domain.repository.ProviderConfigRepository
 import com.aidebate.domain.repository.TopicRepository
+import com.aidebate.domain.repository.ContentSafetyRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,7 +28,8 @@ class DebateOrchestratorImpl @Inject constructor(
     private val debateRepository: DebateRepository,
     private val topicRepository: TopicRepository,
     private val providerConfigRepository: ProviderConfigRepository,
-    private val adapterFactory: ProviderAdapterFactory
+    private val adapterFactory: ProviderAdapterFactory,
+    private val contentSafetyRepository: ContentSafetyRepository
 ) : DebateOrchestrator {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -78,6 +80,7 @@ class DebateOrchestratorImpl @Inject constructor(
 
     override suspend fun submitUserTurn(content: String): DebateTurn {
         val currentSession = _session.value ?: error("No active session")
+        contentSafetyRepository.assertSafe(content, ContentSafetySource.USER_PROMPT)
         val userTurn = DebateTurn(
             id = UUID.randomUUID().toString(),
             sessionId = currentSession.id,

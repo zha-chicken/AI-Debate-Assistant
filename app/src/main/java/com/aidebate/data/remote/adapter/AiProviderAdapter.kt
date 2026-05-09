@@ -14,6 +14,7 @@ import com.aidebate.data.remote.service.GeminiApiService
 import com.aidebate.data.remote.service.OpenAiApiService
 import com.aidebate.data.remote.service.OpenAiCompatibleApiService
 import com.aidebate.domain.model.*
+import com.aidebate.domain.repository.ContentSafetyRepository
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
@@ -55,7 +56,10 @@ class OpenAiAdapter @Inject constructor(
             temperature = config.temperature,
             maxTokens = config.maxTokens
         )
-        val response = service.chat(request)
+        val response = service.chat(
+            authorization = "Bearer ${providerConfig.apiKey}",
+            request = request
+        )
         if (!response.isSuccessful) {
             throw ProviderException(response.code(), response.errorBody()?.string() ?: "Unknown error")
         }
@@ -77,7 +81,10 @@ class OpenAiAdapter @Inject constructor(
                 messages = listOf(OpenAiMessage("user", "respond with just: ok")),
                 maxTokens = 5
             )
-            service.chat(testRequest).isSuccessful
+            service.chat(
+                authorization = "Bearer ${config.apiKey}",
+                request = testRequest
+            ).isSuccessful
         } catch (_: Exception) { false }
     }
 }
@@ -285,12 +292,39 @@ class OpenAiCompatibleAdapter @Inject constructor(
 
 class ProviderException(val statusCode: Int, message: String) : Exception(message)
 
+private class SafeAiProviderAdapter(
+    private val delegate: AiProviderAdapter,
+    private val contentSafetyRepository: ContentSafetyRepository,
+    override val provider: AiProvider
+) : AiProviderAdapter {
+
+    override suspend fun chat(
+        systemPrompt: String,
+        conversationHistory: List<ChatMessage>,
+        config: ChatConfig,
+        providerConfig: ProviderConfig
+    ): ChatResult {
+        conversationHistory
+            .filterNot { it.role.equals("assistant", ignoreCase = true) }
+            .forEach { message ->
+                contentSafetyRepository.assertSafe(message.content, ContentSafetySource.USER_PROMPT)
+            }
+
+        val result = delegate.chat(systemPrompt, conversationHistory, config, providerConfig)
+        contentSafetyRepository.assertSafe(result.content, ContentSafetySource.AI_RESPONSE)
+        return result
+    }
+
+    override suspend fun validate(config: ProviderConfig): Boolean = delegate.validate(config)
+}
+
 @Singleton
 class ProviderAdapterFactory @Inject constructor(
     private val openAiAdapter: OpenAiAdapter,
     private val anthropicAdapter: AnthropicAdapter,
     private val geminiAdapter: GeminiAdapter,
-    private val openAiCompatibleAdapter: OpenAiCompatibleAdapter
+    private val openAiCompatibleAdapter: OpenAiCompatibleAdapter,
+    private val contentSafetyRepository: ContentSafetyRepository
 ) {
     private val map: Map<AiProvider, AiProviderAdapter> = mapOf(
         AiProvider.OPENAI to openAiAdapter,
@@ -301,6 +335,8 @@ class ProviderAdapterFactory @Inject constructor(
         AiProvider.OLLAMA to openAiCompatibleAdapter
     )
 
-    fun getAdapter(provider: AiProvider): AiProviderAdapter =
-        map[provider] ?: throw IllegalArgumentException("No adapter for $provider")
+    fun getAdapter(provider: AiProvider): AiProviderAdapter {
+        val adapter = map[provider] ?: throw IllegalArgumentException("No adapter for $provider")
+        return SafeAiProviderAdapter(adapter, contentSafetyRepository, provider)
+    }
 }

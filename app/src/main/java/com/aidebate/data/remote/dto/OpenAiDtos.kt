@@ -38,3 +38,23 @@ data class Usage(
     @Json(name = "completion_tokens") val completionTokens: Int,
     @Json(name = "total_tokens") val totalTokens: Int
 )
+
+@JsonClass(generateAdapter = true)
+data class OpenAiModerationRequest(
+    val model: String = "omni-moderation-latest",
+    val input: String
+)
+
+@JsonClass(generateAdapter = true)
+data class OpenAiModerationResponse(
+    val id: String? = null,
+    val model: String? = null,
+    val results: List<OpenAiModerationResult> = emptyList()
+)
+
+@JsonClass(generateAdapter = true)
+data class OpenAiModerationResult(
+    val flagged: Boolean = false,
+    val categories: Map<String, Boolean> = emptyMap(),
+    @Json(name = "category_scores") val categoryScores: Map<String, Double> = emptyMap()
+)

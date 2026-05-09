@@ -531,6 +531,20 @@ Avoid:
 - Movement that makes text harder to read
 - Fake loading for static content
 
+## Safety Interruption
+
+AI-powered screens must not show blocked model output. Before a user prompt is sent to a model, and before a model response is displayed or stored, the app runs a content safety check for hate, political-sensitive content, dangerous item-making instructions, and sexual content.
+
+When content is blocked in the live debate screen:
+
+- Show a modal warning titled `内容已拦截`
+- Keep the blocked user prompt or AI output out of the conversation timeline
+- Do not display partial AI output behind the dialog
+- Use the same dark glass surface as the rest of the app
+- Keep warning text white or high-contrast on the dark surface
+
+Other AI tool screens should surface the same safety message through their existing error state if a dedicated dialog is not present.
+
 ## Accessibility and Practical Constraints
 
 The UI should remain usable on small Android phones.

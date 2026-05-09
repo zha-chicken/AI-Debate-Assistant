@@ -23,6 +23,7 @@ data class DebateUiState(
     val currentPhase: StructuredPhase? = null,
     val userInputText: String = "",
     val error: String? = null,
+    val safetyWarning: String? = null,
     val result: DebateResult? = null,
     val isInitializing: Boolean = true
 )
@@ -93,31 +94,31 @@ class DebateViewModel @Inject constructor(
     }
 
     fun onUserInputChanged(text: String) {
-        _uiState.update { it.copy(userInputText = text, error = null) }
+        _uiState.update { it.copy(userInputText = text, error = null, safetyWarning = null) }
     }
 
     fun submitUserTurn() {
         val text = _uiState.value.userInputText.trim()
         if (text.isBlank()) return
 
-        _uiState.update { it.copy(userInputText = "", error = null) }
+        _uiState.update { it.copy(userInputText = "", error = null, safetyWarning = null) }
         viewModelScope.launch {
             try {
                 orchestrator.submitUserTurn(text)
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: "Error sending message") }
+                handleActionError(e, fallback = "Error sending message")
             }
         }
     }
 
     fun onTapToAdvance() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, safetyWarning = null) }
         viewModelScope.launch {
             try {
                 orchestrator.advanceAiTurn()
             } catch (e: Exception) {
                 if (e.message?.contains("already completed") == true) return@launch
-                _uiState.update { it.copy(error = e.message ?: "Error advancing turn") }
+                handleActionError(e, fallback = "Error advancing turn")
             }
         }
     }
@@ -127,7 +128,7 @@ class DebateViewModel @Inject constructor(
             try {
                 orchestrator.requestJudgment()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: "Error requesting judgment") }
+                handleActionError(e, fallback = "Error requesting judgment")
             }
         }
     }
@@ -139,17 +140,29 @@ class DebateViewModel @Inject constructor(
     }
 
     fun endDebateAndJudge() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, safetyWarning = null) }
         viewModelScope.launch {
             try {
                 orchestrator.endDebate(judge = true)
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: "Error ending debate") }
+                handleActionError(e, fallback = "Error ending debate")
             }
         }
     }
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    fun clearSafetyWarning() {
+        _uiState.update { it.copy(safetyWarning = null) }
+    }
+
+    private fun handleActionError(error: Exception, fallback: String) {
+        if (error is ContentSafetyException) {
+            _uiState.update { it.copy(safetyWarning = error.message ?: fallback, error = null) }
+        } else {
+            _uiState.update { it.copy(error = error.message ?: fallback) }
+        }
     }
 }

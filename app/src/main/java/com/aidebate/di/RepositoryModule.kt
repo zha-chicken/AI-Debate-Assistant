@@ -31,6 +31,9 @@ abstract class RepositoryModule {
 
     @Binds @Singleton
     abstract fun bindRebuttalTrainerRepository(impl: RebuttalTrainerRepositoryImpl): RebuttalTrainerRepository
+
+    @Binds @Singleton
+    abstract fun bindContentSafetyRepository(impl: ContentSafetyRepositoryImpl): ContentSafetyRepository
 }
 
 @Module

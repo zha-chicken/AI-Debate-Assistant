@@ -36,3 +36,7 @@ interface SettingsRepository {
     suspend fun getString(key: String): String?
     fun observeString(key: String): Flow<String?>
 }
+
+interface ContentSafetyRepository {
+    suspend fun assertSafe(text: String, source: ContentSafetySource)
+}

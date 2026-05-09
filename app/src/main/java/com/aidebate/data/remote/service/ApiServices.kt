@@ -6,14 +6,23 @@ import com.aidebate.data.remote.dto.gemini.GeminiGenerateRequest
 import com.aidebate.data.remote.dto.gemini.GeminiGenerateResponse
 import com.aidebate.data.remote.dto.openai.OpenAiChatRequest
 import com.aidebate.data.remote.dto.openai.OpenAiChatResponse
+import com.aidebate.data.remote.dto.openai.OpenAiModerationRequest
+import com.aidebate.data.remote.dto.openai.OpenAiModerationResponse
 import retrofit2.Response
 import retrofit2.http.*
 
 interface OpenAiApiService {
     @POST("v1/chat/completions")
     suspend fun chat(
+        @Header("Authorization") authorization: String,
         @Body request: OpenAiChatRequest
     ): Response<OpenAiChatResponse>
+
+    @POST("v1/moderations")
+    suspend fun moderate(
+        @Header("Authorization") authorization: String,
+        @Body request: OpenAiModerationRequest
+    ): Response<OpenAiModerationResponse>
 }
 
 interface AnthropicApiService {

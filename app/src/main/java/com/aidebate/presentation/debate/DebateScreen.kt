@@ -59,6 +59,23 @@ fun DebateScreen(
 
     LaunchedEffect(sessionId) { viewModel.initialize(sessionId) }
 
+    uiState.safetyWarning?.let { warning ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearSafetyWarning() },
+            icon = { Icon(Icons.Default.Report, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("内容已拦截", color = MaterialTheme.colorScheme.onSurface) },
+            text = { Text(warning, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearSafetyWarning() }) {
+                    Text(t.dismiss)
+                }
+            },
+            containerColor = GlassSurfaceStrong,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
     // Build timeline with phase dividers
     val timeline = remember(uiState.turns) {
         buildList {
