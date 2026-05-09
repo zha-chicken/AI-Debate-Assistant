@@ -58,8 +58,9 @@ class ArgumentMapViewModel @Inject constructor(
             try {
                 val impl = repository as com.aidebate.data.repository.ArgumentMapRepositoryImpl
                 repository.deleteAllForTopic(_uiState.value.topicId)
-                val generatedNodes = impl.generateArgumentMap(_uiState.value.topicId)
-                generatedNodes.forEach { repository.saveNode(it) }
+                val graph = impl.generateArgumentMap(_uiState.value.topicId)
+                graph.nodes.forEach { repository.saveNode(it) }
+                graph.edges.forEach { repository.saveEdge(it) }
                 _uiState.update { it.copy(isGenerating = false) }
             } catch (e: Exception) {
                 _uiState.update {
@@ -119,7 +120,26 @@ class ArgumentMapViewModel @Inject constructor(
             title = state.editNodeTitle, content = state.editNodeContent,
             xPosition = 100f, yPosition = (state.nodes.size * 120f) - 200f
         )
-        viewModelScope.launch { repository.saveNode(node) }
+        viewModelScope.launch {
+            repository.saveNode(node)
+            state.selectedNodeId?.let { selectedId ->
+                val selectedNode = state.nodes.find { it.id == selectedId } ?: return@let
+                repository.saveEdge(
+                    ArgumentEdge(
+                        topicId = state.topicId,
+                        fromNodeId = when (state.editNodeType) {
+                            NodeType.EVIDENCE -> node.id
+                            else -> selectedNode.id
+                        },
+                        toNodeId = when (state.editNodeType) {
+                            NodeType.EVIDENCE -> selectedNode.id
+                            else -> node.id
+                        },
+                        relation = inferRelation(selectedNode.type, node.type)
+                    )
+                )
+            }
+        }
         _uiState.update { it.copy(showAddDialog = false) }
     }
 
@@ -147,5 +167,12 @@ class ArgumentMapViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    private fun inferRelation(fromType: NodeType, toType: NodeType): EdgeRelation = when {
+        fromType == NodeType.EVIDENCE || toType == NodeType.EVIDENCE -> EdgeRelation.SUPPORTS
+        fromType == NodeType.PRO && toType == NodeType.CON -> EdgeRelation.REFUTES
+        fromType == NodeType.CON && toType == NodeType.PRO -> EdgeRelation.REFUTES
+        else -> EdgeRelation.RELATES
     }
 }

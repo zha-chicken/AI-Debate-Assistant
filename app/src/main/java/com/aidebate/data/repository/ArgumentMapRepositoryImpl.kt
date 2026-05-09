@@ -59,20 +59,26 @@ class ArgumentMapRepositoryImpl @Inject constructor(
         nodeDao.deleteByTopicId(topicId)
     }
 
-    suspend fun generateArgumentMap(topicId: String): List<ArgumentNode> {
+    suspend fun generateArgumentMap(topicId: String): ArgumentGraph {
         val topic = topicRepository.getTopic(topicId) ?: throw Exception("Topic not found")
         val configs = providerConfigRepository.getEnabledConfigs().first()
         val config = configs.firstOrNull() ?: throw Exception("No AI provider configured")
         val adapter = adapterFactory.getAdapter(config.provider)
 
         val prompt = buildString {
-            append("You are helping a debater prepare. Create an argument map for the topic: \"${topic.title}\".\n")
-            append("Return a JSON array of arguments. Each argument object has these fields:\n")
-            append("- title: short argument title (max 8 words)\n")
-            append("- type: \"PRO\" or \"CON\"\n")
-            append("- content: 1-2 sentence explanation\n")
-            append("Include 3 PRO arguments and 3 CON arguments. Return ONLY valid JSON, no other text.\n")
-            append("Example: [{\"title\":\"Example Pro\",\"type\":\"PRO\",\"content\":\"This is why...\"}]")
+            append("You are helping a debater prepare. Create an argument relationship graph for the topic: \"${topic.title}\".\n")
+            append("Return ONLY valid JSON with this exact shape:\n")
+            append("{\"nodes\":[{\"localId\":\"pro1\",\"title\":\"short title\",\"type\":\"PRO\",\"content\":\"1-2 sentence explanation\"}],")
+            append("\"edges\":[{\"from\":\"pro1\",\"to\":\"con1\",\"relation\":\"REFUTES\"}]}\n")
+            append("Rules:\n")
+            append("- Include 3 PRO nodes and 3 CON nodes.\n")
+            append("- Include 2 EVIDENCE nodes that support the strongest PRO or CON arguments.\n")
+            append("- Node type must be \"PRO\", \"CON\", or \"EVIDENCE\".\n")
+            append("- Edge relation must be \"SUPPORTS\", \"REFUTES\", or \"RELATES\".\n")
+            append("- Every edge from/to must reference a localId from nodes.\n")
+            append("- Include at least 6 edges showing support, refutation, and related reasoning.\n")
+            append("- Titles must be max 8 words.\n")
+            append("- Return no markdown and no commentary.")
         }
 
         val result = adapter.chat(
@@ -85,46 +91,86 @@ class ArgumentMapRepositoryImpl @Inject constructor(
         return parseArgumentJson(result.content, topicId)
     }
 
-    private fun parseArgumentJson(json: String, topicId: String): List<ArgumentNode> {
+    private fun parseArgumentJson(json: String, topicId: String): ArgumentGraph {
         val cleanedJson = json.trim()
             .removePrefix("```json").removePrefix("```")
             .removeSuffix("```").trim()
 
         val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
-        val listType = Types.newParameterizedType(List::class.java, Map::class.java)
-        val adapter = moshi.adapter<List<Map<String, Any>>>(listType)
-        val parsed = adapter.fromJson(cleanedJson) ?: return emptyList()
+        val mapType = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
+        val adapter = moshi.adapter<Map<String, Any>>(mapType)
+        val parsed = adapter.fromJson(cleanedJson) ?: return ArgumentGraph(emptyList(), emptyList())
+        val parsedNodes = parsed["nodes"] as? List<*> ?: return ArgumentGraph(emptyList(), emptyList())
+        val parsedEdges = parsed["edges"] as? List<*> ?: emptyList<Any>()
 
         val nodes = mutableListOf<ArgumentNode>()
-        val centerX = 0f; val centerY = 0f
-        val proX = 250f; val conX = -250f
-        val startY = -160f; val yGap = 140f
+        val localIdToNodeId = mutableMapOf<String, String>()
+        val proX = 260f
+        val conX = -260f
+        val evidenceX = 0f
+        val startY = -210f
+        val yGap = 140f
 
-        parsed.forEachIndexed { index, map ->
+        parsedNodes.forEachIndexed { index, raw ->
+            val map = raw as? Map<*, *> ?: return@forEachIndexed
+            val localId = map["localId"]?.toString()
+                ?: map["id"]?.toString()
+                ?: "node_${index + 1}"
             val title = map["title"]?.toString() ?: "Argument ${index + 1}"
             val type = when (map["type"]?.toString()?.uppercase()) {
                 "PRO" -> NodeType.PRO
                 "CON" -> NodeType.CON
+                "EVIDENCE" -> NodeType.EVIDENCE
                 else -> NodeType.PRO
             }
             val content = map["content"]?.toString() ?: ""
 
             val proCount = nodes.count { it.type == NodeType.PRO }
             val conCount = nodes.count { it.type == NodeType.CON }
+            val evidenceCount = nodes.count { it.type == NodeType.EVIDENCE }
 
-            val x = if (type == NodeType.PRO) proX else conX
-            val y = if (type == NodeType.PRO) {
-                startY + proCount * yGap
-            } else {
-                startY + conCount * yGap
+            val x = when (type) {
+                NodeType.PRO -> proX
+                NodeType.CON -> conX
+                NodeType.EVIDENCE -> evidenceX
+                NodeType.TOPIC -> 0f
+            }
+            val y = when (type) {
+                NodeType.PRO -> startY + proCount * yGap
+                NodeType.CON -> startY + conCount * yGap
+                NodeType.EVIDENCE -> startY + evidenceCount * yGap + 70f
+                NodeType.TOPIC -> 0f
             }
 
-            nodes.add(ArgumentNode(
+            val node = ArgumentNode(
                 topicId = topicId, type = type, title = title,
                 content = content, xPosition = x, yPosition = y
-            ))
+            )
+            localIdToNodeId[localId] = node.id
+            nodes.add(node)
         }
-        return nodes
+
+        val edges = parsedEdges.mapNotNull { raw ->
+            val map = raw as? Map<*, *> ?: return@mapNotNull null
+            val fromLocalId = map["from"]?.toString() ?: return@mapNotNull null
+            val toLocalId = map["to"]?.toString() ?: return@mapNotNull null
+            val fromNodeId = localIdToNodeId[fromLocalId] ?: return@mapNotNull null
+            val toNodeId = localIdToNodeId[toLocalId] ?: return@mapNotNull null
+            if (fromNodeId == toNodeId) return@mapNotNull null
+            val relation = when (map["relation"]?.toString()?.uppercase()) {
+                "REFUTES" -> EdgeRelation.REFUTES
+                "RELATES" -> EdgeRelation.RELATES
+                else -> EdgeRelation.SUPPORTS
+            }
+            ArgumentEdge(
+                topicId = topicId,
+                fromNodeId = fromNodeId,
+                toNodeId = toNodeId,
+                relation = relation
+            )
+        }.distinctBy { "${it.fromNodeId}:${it.toNodeId}:${it.relation}" }
+
+        return ArgumentGraph(nodes = nodes, edges = edges)
     }
 }
 

@@ -24,15 +24,22 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aidebate.domain.model.ArgumentEdge
+import com.aidebate.domain.model.ArgumentNode
+import com.aidebate.domain.model.EdgeRelation
 import com.aidebate.domain.model.NodeType
 import com.aidebate.presentation.localization.LocalTranslation
 import com.aidebate.presentation.theme.*
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.sqrt
+import kotlin.math.sin
 
 @Composable
 fun ArgumentMapScreen(
@@ -63,7 +70,7 @@ fun ArgumentMapScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold, maxLines = 2)
                         if (uiState.nodes.isNotEmpty()) {
-                            Text(String.format(t.argumentCount, uiState.nodes.size),
+                            Text("${uiState.nodes.size} nodes / ${uiState.edges.size} relationships",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                         }
@@ -124,7 +131,6 @@ fun ArgumentMapScreen(
             if (uiState.nodes.isEmpty() && !uiState.isGenerating) {
                 EmptyState(onGenerate = { viewModel.generateMap() })
             } else {
-                val edgeColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
                 Canvas(
                     modifier = Modifier
                         .fillMaxSize()
@@ -149,34 +155,21 @@ fun ArgumentMapScreen(
                 ) {
                     val center = Offset(size.width / 2f, size.height / 2f)
 
-                    // Draw curved edges
+                    fun nodePosition(node: ArgumentNode): Offset = Offset(
+                        center.x + node.xPosition * scale + offset.x,
+                        center.y + node.yPosition * scale + offset.y
+                    )
+
+                    // Draw true graph relationships from persisted ArgumentEdge records.
                     uiState.edges.forEach { edge ->
                         val fromNode = uiState.nodes.find { it.id == edge.fromNodeId }
                         val toNode = uiState.nodes.find { it.id == edge.toNodeId }
                         if (fromNode != null && toNode != null) {
-                            val from = Offset(
-                                center.x + fromNode.xPosition * scale,
-                                center.y + fromNode.yPosition * scale
-                            )
-                            val to = Offset(
-                                center.x + toNode.xPosition * scale,
-                                center.y + toNode.yPosition * scale
-                            )
-                            // Quadratic bezier for curved edges
-                            val midX = (from.x + to.x) / 2f
-                            val midY = (from.y + to.y) / 2f
-                            val control = Offset(midX, midY - 40f * scale)
-
-                            val path = Path().apply {
-                                moveTo(from.x, from.y)
-                                quadraticBezierTo(control.x, control.y, to.x, to.y)
-                            }
-                            drawPath(
-                                path = path,
-                                color = edgeColor,
-                                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                    width = 2f * scale.coerceIn(0.5f, 2f)
-                                )
+                            drawRelationshipEdge(
+                                from = nodePosition(fromNode),
+                                to = nodePosition(toNode),
+                                edge = edge,
+                                scale = scale
                             )
                         }
                     }
@@ -200,14 +193,25 @@ fun ArgumentMapScreen(
                         }
                         drawNode(
                             title = node.title,
-                            x = center.x + node.xPosition * scale,
-                            y = center.y + node.yPosition * scale,
+                            x = center.x + node.xPosition * scale + offset.x,
+                            y = center.y + node.yPosition * scale + offset.y,
                             color = nodeColor,
                             isSelected = node.id == uiState.selectedNodeId,
                             scale = scale
                         )
                     }
                 }
+            }
+
+            val selectedNode = uiState.nodes.find { it.id == uiState.selectedNodeId }
+            if (selectedNode != null) {
+                SelectedNodePanel(
+                    node = selectedNode,
+                    edges = uiState.edges,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(Spacing.lg)
+                )
             }
 
             // Loading overlay
@@ -289,14 +293,109 @@ private fun EmptyState(onGenerate: () -> Unit) {
     }
 }
 
+@Composable
+private fun SelectedNodePanel(
+    node: ArgumentNode,
+    edges: List<ArgumentEdge>,
+    modifier: Modifier = Modifier
+) {
+    val relationCount = edges.count { it.fromNodeId == node.id || it.toNodeId == node.id }
+    val accent = when (node.type) {
+        NodeType.PRO -> SuccessGreen
+        NodeType.CON -> MaterialTheme.colorScheme.error
+        NodeType.EVIDENCE -> WarningAmber
+        NodeType.TOPIC -> Primary
+    }
+    GlassCard(modifier = modifier.fillMaxWidth(), accent = accent) {
+        Column(Modifier.padding(Spacing.md)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = Radii.smallShape, color = accent.copy(alpha = 0.18f)) {
+                    Text(
+                        node.type.name,
+                        modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accent,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Spacer(Modifier.width(Spacing.sm))
+                Text(
+                    "$relationCount relationships",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.58f)
+                )
+            }
+            Spacer(Modifier.height(Spacing.xs))
+            Text(node.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            if (node.content.isNotBlank()) {
+                Text(
+                    node.content,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
+                )
+            }
+        }
+    }
+}
+
+private fun DrawScope.drawRelationshipEdge(
+    from: Offset,
+    to: Offset,
+    edge: ArgumentEdge,
+    scale: Float
+) {
+    val color = when (edge.relation) {
+        EdgeRelation.SUPPORTS -> Color(0xFF9FC5BC)
+        EdgeRelation.REFUTES -> Color(0xFFE4A184)
+        EdgeRelation.RELATES -> Color(0xFFD7E2EE)
+    }
+    val strokeWidth = 2.2f * scale.coerceIn(0.55f, 1.8f)
+    val mid = Offset((from.x + to.x) / 2f, (from.y + to.y) / 2f)
+    val control = Offset(mid.x, mid.y - 34f * scale.coerceIn(0.7f, 1.3f))
+    val path = Path().apply {
+        moveTo(from.x, from.y)
+        quadraticBezierTo(control.x, control.y, to.x, to.y)
+    }
+    drawPath(path = path, color = color.copy(alpha = 0.72f), style = Stroke(width = strokeWidth))
+
+    val angle = atan2(to.y - control.y, to.x - control.x)
+    val nodeRadius = 40f * scale
+    val arrowTip = Offset(
+        x = to.x - cos(angle) * nodeRadius,
+        y = to.y - sin(angle) * nodeRadius
+    )
+    val arrowSize = 10f * scale.coerceIn(0.75f, 1.3f)
+    val left = Offset(
+        x = arrowTip.x - cos(angle - 0.55f) * arrowSize,
+        y = arrowTip.y - sin(angle - 0.55f) * arrowSize
+    )
+    val right = Offset(
+        x = arrowTip.x - cos(angle + 0.55f) * arrowSize,
+        y = arrowTip.y - sin(angle + 0.55f) * arrowSize
+    )
+    drawLine(color = color, start = left, end = arrowTip, strokeWidth = strokeWidth)
+    drawLine(color = color, start = right, end = arrowTip, strokeWidth = strokeWidth)
+
+    val labelPaint = android.graphics.Paint().apply {
+        this.color = android.graphics.Color.WHITE
+        textSize = 20f * scale.coerceIn(0.65f, 1.2f)
+        isAntiAlias = true
+        textAlign = android.graphics.Paint.Align.CENTER
+    }
+    drawContext.canvas.nativeCanvas.drawText(
+        edge.relation.name.lowercase(),
+        control.x,
+        control.y - 6f * scale,
+        labelPaint
+    )
+}
+
 private fun DrawScope.drawNode(
     title: String, x: Float, y: Float,
     color: Color, isSelected: Boolean, scale: Float
 ) {
     val baseRadius = 36f
     val radius = if (isSelected) baseRadius * 1.15f else baseRadius
-    val iconSize = radius * scale.coerceIn(0.7f, 1.3f)
-
     // Shadow ring for selected
     if (isSelected) {
         drawCircle(

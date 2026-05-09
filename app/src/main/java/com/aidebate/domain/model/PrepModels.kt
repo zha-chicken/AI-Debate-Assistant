@@ -26,6 +26,11 @@ data class ArgumentEdge(
     val relation: EdgeRelation = EdgeRelation.SUPPORTS
 )
 
+data class ArgumentGraph(
+    val nodes: List<ArgumentNode>,
+    val edges: List<ArgumentEdge>
+)
+
 data class RebuttalSession(
     val id: String = UUID.randomUUID().toString(),
     val topicId: String,
