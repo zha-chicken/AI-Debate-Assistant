@@ -14,5 +14,5 @@ interface DebateOrchestrator {
     suspend fun advanceAiTurn(): DebateTurn
     suspend fun requestJudgment(): DebateResult
     fun buildConversationContext(): List<ChatMessage>
-    suspend fun endDebate()
+    suspend fun endDebate(judge: Boolean = false)
 }

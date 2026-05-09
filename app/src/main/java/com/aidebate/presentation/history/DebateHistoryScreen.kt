@@ -32,7 +32,7 @@ import java.util.Locale
 
 @Composable
 fun DebateHistoryScreen(
-    onDebateSelected: (String) -> Unit,
+    onDebateSelected: (HistoryItem.Debate) -> Unit,
     onRebuttalSelected: (String) -> Unit,
     onBack: () -> Unit,
     onHome: () -> Unit = onBack,
@@ -135,7 +135,7 @@ fun DebateHistoryScreen(
                         when (item) {
                             is HistoryItem.Debate -> DebateHistoryCard(
                                 item = item,
-                                onClick = { onDebateSelected(item.id) },
+                                onClick = { onDebateSelected(item) },
                                 onDelete = { viewModel.deleteSession(item.id) }
                             )
                             is HistoryItem.Rebuttal -> RebuttalHistoryCard(

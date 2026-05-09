@@ -24,6 +24,7 @@ import com.aidebate.presentation.argumentmap.ArgumentMapScreen
 import com.aidebate.presentation.rebuttal.RebuttalTrainerScreen
 import com.aidebate.presentation.fallacy.FallacyDetectorScreen
 import com.aidebate.presentation.facetoface.FaceToFaceScreen
+import com.aidebate.domain.model.SessionStatus
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
@@ -174,8 +175,12 @@ fun AppNavHost(
 
         composable(Screen.History.route) {
             DebateHistoryScreen(
-                onDebateSelected = { sessionId ->
-                    navController.navigate(Screen.Debate.createRoute(sessionId))
+                onDebateSelected = { item ->
+                    if (item.summary.status == SessionStatus.ACTIVE) {
+                        navController.navigate(Screen.Debate.createRoute(item.id))
+                    } else {
+                        navController.navigate(Screen.DebateResult.createRoute(item.id))
+                    }
                 },
                 onRebuttalSelected = { sessionId ->
                     navController.navigate(Screen.RebuttalTrainer.createRoute(sessionId))

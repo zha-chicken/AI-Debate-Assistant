@@ -289,8 +289,17 @@ Content:
 - Typing/thinking state for AI
 - Input field for user turns
 - Send control
+- Early finish control in User vs AI mode
 
 AI-vs-AI mode should clearly show that the user cannot type during automated turns.
+
+User vs AI behavior:
+
+- New turns auto-scroll to the newest debate item, not the top of the transcript
+- Structured debates show progress as current turn / total turns
+- The expected structured User vs AI total is 12 turns
+- `End & Judge` ends the debate early and requests an AI judgment immediately
+- Completed debates should generate or show a winner and judging summary
 
 ### Debate Result
 

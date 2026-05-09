@@ -2,11 +2,7 @@ package com.aidebate.presentation.result
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aidebate.data.local.mapper.toDomain
-import com.aidebate.data.local.dao.DebateSessionDao
-import com.aidebate.data.local.dao.DebateTurnDao
 import com.aidebate.domain.model.DebateResult
-import com.aidebate.domain.model.DebateTopic
 import com.aidebate.domain.model.DebateTurn
 import com.aidebate.domain.repository.DebateRepository
 import com.aidebate.domain.repository.TopicRepository
@@ -35,8 +31,11 @@ class DebateResultViewModel @Inject constructor(
         viewModelScope.launch {
             val session = debateRepository.getSession(sessionId).first() ?: return@launch
             val topic = topicRepository.getTopic(session.topicId)
-            debateRepository.getTurns(sessionId).collect { turns ->
-                debateRepository.getResult(sessionId).collect { result ->
+            combine(
+                debateRepository.getTurns(sessionId),
+                debateRepository.getResult(sessionId)
+            ) { turns, result -> turns to result }
+                .collect { (turns, result) ->
                     _uiState.value = DebateResultUiState(
                         topicTitle = topic?.title ?: "",
                         turns = turns,
@@ -44,7 +43,6 @@ class DebateResultViewModel @Inject constructor(
                         isLoading = false
                     )
                 }
-            }
         }
     }
 }

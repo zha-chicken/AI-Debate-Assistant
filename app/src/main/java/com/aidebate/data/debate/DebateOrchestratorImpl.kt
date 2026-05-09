@@ -14,6 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -110,10 +111,13 @@ class DebateOrchestratorImpl @Inject constructor(
             scope.launch {
                 scoreTurnAsync(userTurn, SpeakerRole.AI_OPPOSITION, currentSession)
             }
+            scope.launch {
+                scoreTurnAsync(aiTurn, SpeakerRole.USER, currentSession)
+            }
 
             val result = stateMachine?.advance()
             if (result is DebateStateMachine.AdvanceResult.Completed) {
-                completeDebate(currentSession)
+                completeDebate(currentSession, judge = true)
             } else {
                 _contextualState.value = DebateContextualState.WaitingForUserInput
             }
@@ -165,7 +169,7 @@ class DebateOrchestratorImpl @Inject constructor(
             val nextState = stateMachine?.advance()
             when (nextState) {
                 is DebateStateMachine.AdvanceResult.Completed -> {
-                    completeDebate(currentSession)
+                    completeDebate(currentSession, judge = true)
                 }
                 is DebateStateMachine.AdvanceResult.NextTurn -> {
                     val nextProvider = if (nextState.speaker == SpeakerRole.AI_PROPOSITION)
@@ -194,26 +198,33 @@ class DebateOrchestratorImpl @Inject constructor(
 
     override suspend fun requestJudgment(): DebateResult {
         val currentSession = _session.value ?: error("No active session")
+        debateRepository.getResult(currentSession.id).first()?.let { return it }
         _contextualState.value = DebateContextualState.Judging
         _isThinking.value = true
 
         try {
             val transcript = buildTranscript()
+            val userSideText = currentSession.userSide?.let {
+                if (it == SpeakerRole.AI_PROPOSITION) "PROPOSITION" else "OPPOSITION"
+            } ?: "N/A"
             val judgePrompt = buildString {
                 append("You are an impartial debate judge. Read the following debate transcript ")
                 append("and determine the winner. Consider argument quality, evidence, logic, and persuasiveness.\n\n")
                 append("Topic: $topicTitle\n\n")
+                if (currentSession.mode == DebateMode.USER_VS_AI) {
+                    append("This is a User vs AI debate. The user argued as: $userSideText.\n")
+                }
                 append("=== DEBATE TRANSCRIPT ===\n")
                 append(transcript)
                 append("\n=== END TRANSCRIPT ===\n\n")
                 append("Respond in this format:\n")
                 append("WINNER: [PROPOSITION or OPPOSITION]\n")
-                append("SUMMARY: [2-3 sentence explanation of why this side won]")
+                append("SUMMARY: [2-3 sentence explanation with a concise score such as 6:4 or 7:5]")
             }
 
-            val judgeProvider = AiProvider.OPENAI
-            val judgeConfig = providerConfigRepository.getConfig(judgeProvider)
+            val judgeConfig = findJudgeProviderConfig(currentSession)
                 ?: throw ProviderException(0, "No judge provider configured")
+            val judgeProvider = judgeConfig.provider
             val adapter = adapterFactory.getAdapter(judgeProvider)
             val result = adapter.chat(
                 systemPrompt = "You are an impartial and fair debate judge.",
@@ -222,7 +233,8 @@ class DebateOrchestratorImpl @Inject constructor(
                 providerConfig = judgeConfig
             )
 
-            val (winner, summary) = parseJudgeResponse(result.content)
+            val (rawWinner, summary) = parseJudgeResponse(result.content)
+            val winner = mapWinnerForSession(rawWinner, currentSession)
             val debateResult = DebateResult(
                 id = UUID.randomUUID().toString(),
                 sessionId = currentSession.id,
@@ -243,7 +255,7 @@ class DebateOrchestratorImpl @Inject constructor(
     }
 
     override fun buildConversationContext(): List<ChatMessage> {
-        val currentSession = _session.value ?: return emptyList()
+        _session.value ?: return emptyList()
         val allTurns = _turns.value
         return allTurns.map { turn ->
             val role = when (turn.speakerRole) {
@@ -256,16 +268,77 @@ class DebateOrchestratorImpl @Inject constructor(
         }
     }
 
-    override suspend fun endDebate() {
+    override suspend fun endDebate(judge: Boolean) {
         val currentSession = _session.value ?: return
-        completeDebate(currentSession)
+        completeDebate(currentSession, judge)
     }
 
-    private suspend fun completeDebate(session: DebateSession) {
+    private suspend fun completeDebate(session: DebateSession, judge: Boolean) {
         val completed = session.copy(status = SessionStatus.COMPLETED)
         _session.value = completed
         debateRepository.updateSession(completed)
         _contextualState.value = DebateContextualState.DebateCompleted
+        if (judge && _turns.value.isNotEmpty()) {
+            runCatching {
+                requestJudgment()
+            }.onFailure { error ->
+                val fallback = DebateResult(
+                    id = UUID.randomUUID().toString(),
+                    sessionId = completed.id,
+                    winner = estimateWinnerFromScores(completed),
+                    summary = "Debate ended, but AI judging failed: ${error.message ?: "unknown error"}",
+                    judgedByProvider = null,
+                    judgedByModel = null
+                )
+                debateRepository.saveResult(fallback)
+                _contextualState.value = DebateContextualState.DebateCompleted
+            }
+        }
+    }
+
+    private suspend fun findJudgeProviderConfig(session: DebateSession): ProviderConfig? {
+        val preferredProviders = listOf(
+            session.providerOpposition,
+            session.providerProposition,
+            AiProvider.OPENAI
+        ).distinct()
+
+        preferredProviders.forEach { provider ->
+            val config = providerConfigRepository.getConfig(provider)
+            if (config?.isEnabled == true && config.apiKey.isNotBlank()) return config
+        }
+
+        return providerConfigRepository.getEnabledConfigs().first()
+            .firstOrNull { it.apiKey.isNotBlank() }
+    }
+
+    private fun mapWinnerForSession(winner: SpeakerRole?, session: DebateSession): SpeakerRole? {
+        if (session.mode != DebateMode.USER_VS_AI || winner == null) return winner
+        return if (winner == session.userSide) {
+            SpeakerRole.USER
+        } else {
+            if (session.userSide == SpeakerRole.AI_PROPOSITION) SpeakerRole.AI_OPPOSITION else SpeakerRole.AI_PROPOSITION
+        }
+    }
+
+    private fun estimateWinnerFromScores(session: DebateSession): SpeakerRole? {
+        val scoredTurns = _turns.value.filter { it.score != null }
+        if (scoredTurns.isEmpty()) return null
+        val userAverage = scoredTurns
+            .filter { it.speakerRole == SpeakerRole.USER }
+            .mapNotNull { it.score?.overall }
+            .average()
+        val aiAverage = scoredTurns
+            .filter { it.speakerRole != SpeakerRole.USER && it.speakerRole != SpeakerRole.MODERATOR }
+            .mapNotNull { it.score?.overall }
+            .average()
+
+        return when {
+            userAverage.isNaN() && aiAverage.isNaN() -> null
+            aiAverage.isNaN() || userAverage >= aiAverage -> SpeakerRole.USER
+            session.userSide == SpeakerRole.AI_PROPOSITION -> SpeakerRole.AI_OPPOSITION
+            else -> SpeakerRole.AI_PROPOSITION
+        }
     }
 
     private suspend fun generateAiResponse(

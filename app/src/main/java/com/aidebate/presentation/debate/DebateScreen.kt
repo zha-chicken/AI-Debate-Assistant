@@ -59,13 +59,6 @@ fun DebateScreen(
 
     LaunchedEffect(sessionId) { viewModel.initialize(sessionId) }
 
-    // Auto-scroll to latest item
-    LaunchedEffect(uiState.turns.size) {
-        if (uiState.turns.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.turns.size - 1)
-        }
-    }
-
     // Build timeline with phase dividers
     val timeline = remember(uiState.turns) {
         buildList {
@@ -77,6 +70,22 @@ fun DebateScreen(
                 }
                 add(TimelineItem.Turn(turn))
             }
+        }
+    }
+    val isWaitingForTap = uiState.contextualState is DebateContextualState.WaitingForTap
+    val isEndState = uiState.contextualState is DebateContextualState.DebateCompleted ||
+        uiState.contextualState is DebateContextualState.Judging
+    val listItemCount = 1 + timeline.size +
+        if (uiState.isThinking) 1 else 0 +
+        if (isWaitingForTap) 1 else 0 +
+        if (isEndState) 1 else 0 +
+        if (uiState.error != null) 1 else 0
+
+    // Auto-scroll to the newest meaningful item. The old turn-count index pointed
+    // near the top because the list also contains status and phase divider items.
+    LaunchedEffect(listItemCount) {
+        if (listItemCount > 1) {
+            listState.animateScrollToItem(listItemCount - 1)
         }
     }
 
@@ -150,7 +159,10 @@ fun DebateScreen(
                                 verticalArrangement = Arrangement.spacedBy(Spacing.md)
                             ) {
                             item(key = "status") {
-                                DebateStatusPanel(uiState)
+                                DebateStatusPanel(
+                                    uiState = uiState,
+                                    onEndEarly = { viewModel.endDebateAndJudge() }
+                                )
                             }
 
                             // Turns with phase dividers
@@ -189,7 +201,6 @@ fun DebateScreen(
                             }
 
                             // Tap to advance (AI vs AI)
-                            val isWaitingForTap = uiState.contextualState is DebateContextualState.WaitingForTap
                             if (isWaitingForTap) {
                                 item(key = "tapAdvance") {
                                     val tapState = uiState.contextualState as DebateContextualState.WaitingForTap
@@ -245,10 +256,25 @@ fun DebateScreen(
 }
 
 @Composable
-private fun DebateStatusPanel(uiState: DebateUiState) {
+private fun DebateStatusPanel(
+    uiState: DebateUiState,
+    onEndEarly: () -> Unit,
+) {
     val t = LocalTranslation.current
     val supportTurns = uiState.turns.count { it.speakerRole == SpeakerRole.AI_PROPOSITION || it.speakerRole == SpeakerRole.USER }
     val opposeTurns = uiState.turns.count { it.speakerRole == SpeakerRole.AI_OPPOSITION }
+    val targetTurns = when {
+        uiState.format == DebateFormat.STRUCTURED && uiState.mode == DebateMode.USER_VS_AI -> 12
+        uiState.format == DebateFormat.STRUCTURED && uiState.mode == DebateMode.AI_VS_AI -> 6
+        else -> null
+    }
+    val turnLabel = targetTurns?.let { "${uiState.turns.size.coerceAtMost(it)} / $it" }
+        ?: uiState.turns.size.toString()
+    val canEndEarly = uiState.mode == DebateMode.USER_VS_AI &&
+        uiState.turns.isNotEmpty() &&
+        uiState.contextualState !is DebateContextualState.DebateCompleted &&
+        uiState.contextualState !is DebateContextualState.Judging &&
+        !uiState.isThinking
     val roundLabel = uiState.currentPhase?.let {
         when (it) {
             StructuredPhase.OPENING -> t.phaseOpening
@@ -289,18 +315,36 @@ private fun DebateStatusPanel(uiState: DebateUiState) {
             }
             Spacer(Modifier.height(Spacing.sm))
             LinearProgressIndicator(
-                progress = { (supportTurns + opposeTurns).coerceAtMost(12) / 12f },
+                progress = {
+                    val maxTurns = targetTurns ?: 12
+                    uiState.turns.size.coerceAtMost(maxTurns).toFloat() / maxTurns.toFloat()
+                },
                 modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(999.dp)),
                 color = Secondary,
                 trackColor = Primary.copy(alpha = 0.28f)
             )
             Spacer(Modifier.height(Spacing.xs))
             Text(
-                "Turn ${uiState.turns.size}",
+                "Turn $turnLabel",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.48f),
                 modifier = Modifier.align(Alignment.End)
             )
+            if (canEndEarly) {
+                Spacer(Modifier.height(Spacing.sm))
+                OutlinedButton(
+                    onClick = onEndEarly,
+                    modifier = Modifier.align(Alignment.End),
+                    shape = Radii.smallShape,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = WarmGlow
+                    )
+                ) {
+                    Icon(Icons.Default.Gavel, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(Spacing.xs))
+                    Text(t.endAndJudge)
+                }
+            }
         }
     }
 }

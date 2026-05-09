@@ -138,6 +138,17 @@ class DebateViewModel @Inject constructor(
         }
     }
 
+    fun endDebateAndJudge() {
+        _uiState.update { it.copy(error = null) }
+        viewModelScope.launch {
+            try {
+                orchestrator.endDebate(judge = true)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "Error ending debate") }
+            }
+        }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
