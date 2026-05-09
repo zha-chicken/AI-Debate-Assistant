@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.aidebate.domain.model.DebateMode
 import com.aidebate.domain.model.DebateResult
 import com.aidebate.domain.model.DebateSessionSummary
-import com.aidebate.domain.model.SessionStatus
 import com.aidebate.domain.model.SpeakerRole
 import com.aidebate.domain.repository.DebateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,9 +40,8 @@ class HomeViewModel @Inject constructor(
         sessions: List<DebateSessionSummary>,
         results: List<DebateResult>,
     ): HomeStatsUiState {
-        val completedSessions = sessions.filter { it.status == SessionStatus.COMPLETED }
         val resultsBySessionId = results.associateBy { it.sessionId }
-        val judgedUserDebates = completedSessions
+        val judgedUserDebates = sessions
             .filter { it.mode == DebateMode.USER_VS_AI }
             .mapNotNull { session ->
                 val result = resultsBySessionId[session.id] ?: return@mapNotNull null
@@ -66,7 +64,7 @@ class HomeViewModel @Inject constructor(
             .size
 
         return HomeStatsUiState(
-            debateCount = completedSessions.size,
+            debateCount = sessions.size,
             winRatePercent = winRate,
             winStreak = streak,
         )

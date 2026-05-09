@@ -409,9 +409,14 @@ class DebateOrchestratorImpl @Inject constructor(
     private fun parseJudgeResponse(response: String): Pair<SpeakerRole?, String> {
         val winner = when {
             response.contains("WINNER: PROPOSITION", ignoreCase = true) ||
-            response.contains("WINNER: FOR", ignoreCase = true) -> SpeakerRole.AI_PROPOSITION
+            response.contains("WINNER: FOR", ignoreCase = true) ||
+            response.contains("WINNER: SUPPORT", ignoreCase = true) ||
+            response.contains("WINNER: PRO", ignoreCase = true) -> SpeakerRole.AI_PROPOSITION
             response.contains("WINNER: OPPOSITION", ignoreCase = true) ||
-            response.contains("WINNER: AGAINST", ignoreCase = true) -> SpeakerRole.AI_OPPOSITION
+            response.contains("WINNER: AGAINST", ignoreCase = true) ||
+            response.contains("WINNER: OPPOSE", ignoreCase = true) ||
+            response.contains("WINNER: CON", ignoreCase = true) -> SpeakerRole.AI_OPPOSITION
+            response.contains("WINNER: USER", ignoreCase = true) -> SpeakerRole.USER
             else -> null
         }
         val summary = response
