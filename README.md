@@ -10,7 +10,8 @@ It was originally built as AiDebate and later renamed to Rhetorix. The project i
 
 Android is available now. iOS is planned next.
 
-- GitHub APK: https://github.com/zha-chicken/AI-Debate-Assistant/releases/download/rhetorix-v1.0/app-debug.apk
+- Latest release: https://github.com/zha-chicken/AI-Debate-Assistant/releases/tag/rhetorix-v1.4
+- GitHub APK: https://github.com/zha-chicken/AI-Debate-Assistant/releases/download/rhetorix-v1.4/Rhetorix-v1.4-debug.apk
 - Lanzou Netdisk: https://wwari.lanzouq.com/izXfA3p1aaqb
 - Lanzou password: `9yn6`
 - Landing page repository: https://github.com/zha-chicken/Rhetorix-Landing
@@ -20,11 +21,12 @@ Android is available now. iOS is planned next.
 - Debate against AI in structured or free-flow formats.
 - Watch AI-vs-AI debates from both sides of an issue.
 - Practice face-to-face debate on one device.
-- Build argument maps for pro and con positions.
+- Generate Argument Relationship Graphs from AI-vs-AI debate context.
 - Train rebuttals under a timer and receive AI scoring.
 - Detect logical fallacies in pasted arguments.
 - Open an external AI hallucination detector from the tools page.
 - Review debate history, scores, turns, and results.
+- See clear AI-generated content disclaimers under generated content.
 
 All app features are free. There is no paywall. The app uses a support/donation QR code instead of premium gating.
 
@@ -35,8 +37,23 @@ Rhetorix supports user-configured provider keys and models:
 - OpenAI
 - Anthropic Claude
 - Google Gemini
+- DeepSeek
+- Groq
+- Ollama / OpenAI-compatible local endpoints
 
 Provider settings are stored locally through DataStore and Room. Users bring their own API keys.
+
+## Safety and Transparency
+
+Rhetorix includes a fail-closed content safety layer before user prompts are sent to a model and before AI output is displayed or stored. If a safety check fails because of a timeout, invalid API key, invalid response, or provider error, the related content is blocked and the app asks the user to retry later.
+
+Safety checks use the selected provider when possible. For example, if the user configures DeepSeek for a debate, DeepSeek is used for the safety classification step. OpenAI uses the moderation endpoint when available.
+
+Visible AI-generated content includes the disclaimer:
+
+```text
+内容由AI生成，仅供参考 AI-generated, for reference only
+```
 
 ## Tech Stack
 
@@ -101,7 +118,7 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ## Notes
 
-- The current public release is `rhetorix-v1.0`.
+- The current public release is `rhetorix-v1.4`.
 - The app name shown to users is Rhetorix.
 - Previous VIP, premium, paywall, and usage-limit code was removed.
 - The landing page is maintained separately in `zha-chicken/Rhetorix-Landing`.
