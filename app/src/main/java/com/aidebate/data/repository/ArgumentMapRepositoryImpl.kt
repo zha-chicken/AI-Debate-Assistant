@@ -59,7 +59,7 @@ class ArgumentMapRepositoryImpl @Inject constructor(
         nodeDao.deleteByTopicId(topicId)
     }
 
-    suspend fun generateArgumentMap(topicId: String): ArgumentGraph {
+    suspend fun generateThreeRoundDebate(topicId: String): List<ArgumentMapDebateTurn> {
         val topic = topicRepository.getTopic(topicId) ?: throw Exception("Topic not found")
         val configs = providerConfigRepository.getEnabledConfigs().first()
         val config = configs.firstOrNull() ?: throw Exception("No AI provider configured")
@@ -67,18 +67,66 @@ class ArgumentMapRepositoryImpl @Inject constructor(
         val chatConfig = ChatConfig(model = config.modelName.ifBlank { "gpt-4o" })
 
         val prompt = buildString {
-            append("You are helping a debater prepare. Create an argument relationship graph for the topic: \"${topic.title}\".\n")
+            append("Run a concise 3-round AI vs AI debate for this topic: \"${topic.title}\".\n")
+            append("Side PRO defends the proposition. Side CON challenges it.\n")
+            append("Each round must include one PRO turn and one CON turn.\n")
+            append("Each turn should be 45-70 words, specific, and contain extractable claims/evidence/objections.\n")
+            append("Return ONLY valid JSON with this exact shape:\n")
+            append("""{"turns":[{"round":1,"side":"PRO","content":"..."},{"round":1,"side":"CON","content":"..."}]}""")
+        }
+
+        val result = aiAdapter.chat(
+            systemPrompt = "You are simulating a balanced academic debate. Return valid JSON only.",
+            conversationHistory = listOf(ChatMessage("user", prompt)),
+            config = chatConfig,
+            providerConfig = config
+        )
+
+        return runCatching {
+            parseDebateTurns(result.content)
+        }.getOrElse {
+            repairDebateJson(
+                invalidJson = result.content,
+                aiAdapter = aiAdapter,
+                chatConfig = chatConfig,
+                providerConfig = config
+            ).let { repaired -> parseDebateTurns(repaired) }
+        }
+    }
+
+    suspend fun generateArgumentMap(
+        topicId: String,
+        debateTurns: List<ArgumentMapDebateTurn> = emptyList()
+    ): ArgumentGraph {
+        val topic = topicRepository.getTopic(topicId) ?: throw Exception("Topic not found")
+        val configs = providerConfigRepository.getEnabledConfigs().first()
+        val config = configs.firstOrNull() ?: throw Exception("No AI provider configured")
+        val aiAdapter = adapterFactory.getAdapter(config.provider)
+        val chatConfig = ChatConfig(model = config.modelName.ifBlank { "gpt-4o" })
+        val debateTranscript = debateTurns.joinToString("\n") {
+            "Round ${it.round} ${it.side}: ${it.content}"
+        }
+
+        val prompt = buildString {
+            append("You are helping a debater prepare. Create a detailed argument relationship graph for the topic: \"${topic.title}\".\n")
+            if (debateTranscript.isNotBlank()) {
+                append("Base the graph on this 3-round AI vs AI debate transcript. Extract concrete claims, objections, rebuttals, and evidence from it.\n\n")
+                append("=== DEBATE TRANSCRIPT ===\n")
+                append(debateTranscript)
+                append("\n=== END TRANSCRIPT ===\n\n")
+            }
             append("Return ONLY valid JSON with this exact shape:\n")
             append("{\"nodes\":[{\"localId\":\"pro1\",\"title\":\"short title\",\"type\":\"PRO\",\"content\":\"1-2 sentence explanation\"}],")
             append("\"edges\":[{\"from\":\"pro1\",\"to\":\"con1\",\"relation\":\"REFUTES\"}]}\n")
-            append("Use exactly these node IDs: pro1, pro2, pro3, con1, con2, con3, ev1, ev2.\n")
+            append("Use exactly these node IDs: pro1, pro2, pro3, pro4, con1, con2, con3, con4, ev1, ev2, ev3, ev4.\n")
             append("Rules:\n")
-            append("- Include 3 PRO nodes and 3 CON nodes.\n")
-            append("- Include 2 EVIDENCE nodes that support the strongest PRO or CON arguments.\n")
+            append("- Include 4 PRO nodes and 4 CON nodes.\n")
+            append("- Include 4 EVIDENCE nodes that support or challenge the strongest claims.\n")
             append("- Node type must be \"PRO\", \"CON\", or \"EVIDENCE\".\n")
             append("- Edge relation must be \"SUPPORTS\", \"REFUTES\", or \"RELATES\".\n")
             append("- Every edge from/to must reference a localId from nodes.\n")
-            append("- Include at least 6 edges showing support, refutation, and related reasoning.\n")
+            append("- Include at least 12 edges showing support, refutation, and related reasoning.\n")
+            append("- Every PRO and CON node must have at least one relationship.\n")
             append("- Titles must be max 8 words.\n")
             append("- Return no markdown and no commentary.")
         }
@@ -107,6 +155,27 @@ class ArgumentMapRepositoryImpl @Inject constructor(
         }
     }
 
+    private fun parseDebateTurns(json: String): List<ArgumentMapDebateTurn> {
+        val cleanedJson = extractJsonObject(json)
+        val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+        val mapType = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
+        val adapter = moshi.adapter<Map<String, Any>>(mapType)
+        val parsed = adapter.fromJson(cleanedJson) ?: throw IllegalArgumentException("Empty debate JSON")
+        val rawTurns = parsed["turns"] as? List<*> ?: throw IllegalArgumentException("Missing debate turns")
+        return rawTurns.mapNotNull { raw ->
+            val map = raw as? Map<*, *> ?: return@mapNotNull null
+            ArgumentMapDebateTurn(
+                round = (map["round"] as? Number)?.toInt() ?: map["round"]?.toString()?.toIntOrNull() ?: 1,
+                side = map["side"]?.toString()?.uppercase()?.let {
+                    if (it == "CON" || it == "OPPOSE" || it == "OPPOSITION") "CON" else "PRO"
+                } ?: "PRO",
+                content = map["content"]?.toString()?.trim().orEmpty()
+            )
+        }.filter { it.content.isNotBlank() }.take(6).ifEmpty {
+            throw IllegalArgumentException("No usable debate turns")
+        }
+    }
+
     private fun parseArgumentJson(json: String, topicId: String): ArgumentGraph {
         val cleanedJson = extractJsonObject(json)
 
@@ -119,11 +188,11 @@ class ArgumentMapRepositoryImpl @Inject constructor(
 
         val nodes = mutableListOf<ArgumentNode>()
         val localIdToNodeId = mutableMapOf<String, String>()
-        val proX = 260f
-        val conX = -260f
+        val proX = 300f
+        val conX = -300f
         val evidenceX = 0f
-        val startY = -210f
-        val yGap = 140f
+        val startY = -260f
+        val yGap = 150f
 
         parsedNodes.forEachIndexed { index, raw ->
             val map = raw as? Map<*, *> ?: return@forEachIndexed
@@ -152,7 +221,7 @@ class ArgumentMapRepositoryImpl @Inject constructor(
             val y = when (type) {
                 NodeType.PRO -> startY + proCount * yGap
                 NodeType.CON -> startY + conCount * yGap
-                NodeType.EVIDENCE -> startY + evidenceCount * yGap + 70f
+                NodeType.EVIDENCE -> startY + evidenceCount * yGap + 45f
                 NodeType.TOPIC -> 0f
             }
 
@@ -199,9 +268,30 @@ class ArgumentMapRepositoryImpl @Inject constructor(
             append("The output must have exactly this shape:\n")
             append("{\"nodes\":[{\"localId\":\"pro1\",\"title\":\"...\",\"type\":\"PRO\",\"content\":\"...\"}],")
             append("\"edges\":[{\"from\":\"pro1\",\"to\":\"con1\",\"relation\":\"REFUTES\"}]}\n")
-            append("Allowed localId values: pro1, pro2, pro3, con1, con2, con3, ev1, ev2.\n")
+            append("Allowed localId values: pro1, pro2, pro3, pro4, con1, con2, con3, con4, ev1, ev2, ev3, ev4.\n")
             append("Allowed node types: PRO, CON, EVIDENCE.\n")
             append("Allowed edge relations: SUPPORTS, REFUTES, RELATES.\n")
+            append("Return no markdown and no commentary.\n\n")
+            append(invalidJson)
+        }
+        return aiAdapter.chat(
+            systemPrompt = "You repair malformed JSON. Return valid JSON only.",
+            conversationHistory = listOf(ChatMessage("user", repairPrompt)),
+            config = chatConfig,
+            providerConfig = providerConfig
+        ).content
+    }
+
+    private suspend fun repairDebateJson(
+        invalidJson: String,
+        aiAdapter: AiProviderAdapter,
+        chatConfig: ChatConfig,
+        providerConfig: ProviderConfig
+    ): String {
+        val repairPrompt = buildString {
+            append("Repair the following invalid JSON into valid JSON only.\n")
+            append("""The output must be: {"turns":[{"round":1,"side":"PRO","content":"..."},{"round":1,"side":"CON","content":"..."}]}""")
+            append("\nInclude exactly 6 turns: PRO and CON for rounds 1, 2, and 3.\n")
             append("Return no markdown and no commentary.\n\n")
             append(invalidJson)
         }

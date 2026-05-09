@@ -6,6 +6,12 @@ enum class NodeType { TOPIC, PRO, CON, EVIDENCE }
 
 enum class EdgeRelation { SUPPORTS, REFUTES, RELATES }
 
+data class ArgumentMapDebateTurn(
+    val round: Int,
+    val side: String,
+    val content: String
+)
+
 data class ArgumentNode(
     val id: String = UUID.randomUUID().toString(),
     val topicId: String,

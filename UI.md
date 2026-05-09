@@ -355,6 +355,20 @@ Purpose: generate and inspect relationships between claims, evidence, objections
 
 This screen is not a simple pro/con mind map. It should behave and read as a relationship graph.
 
+Generation behavior:
+
+- After the user selects a topic, AI generation should first simulate a concise 3-round AI vs AI debate.
+- The relationship graph should then be extracted from that debate transcript, not from a shallow one-shot pro/con list.
+- The generated graph should include multiple pro claims, con objections, evidence nodes, and directed relationships.
+- The graph should aim for at least 12 meaningful relationships when AI generation succeeds.
+
+Loading state:
+
+- While AI generation is running, the middle of the screen should show part of the AI vs AI debate process.
+- The debate preview is limited to the center area of the screen.
+- Top and bottom areas use dark gradient blur/scrim treatment so the user's attention stays on the generating debate.
+- The loading state must represent real generation steps, not fake static content.
+
 Content:
 
 - Topic title

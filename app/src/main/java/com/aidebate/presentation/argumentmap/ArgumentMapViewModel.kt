@@ -15,6 +15,7 @@ data class ArgumentMapUiState(
     val topicId: String = "",
     val nodes: List<ArgumentNode> = emptyList(),
     val edges: List<ArgumentEdge> = emptyList(),
+    val generationDebateTurns: List<ArgumentMapDebateTurn> = emptyList(),
     val selectedNodeId: String? = null,
     val isGenerating: Boolean = false,
     val error: String? = null,
@@ -57,14 +58,17 @@ class ArgumentMapViewModel @Inject constructor(
             _uiState.update { it.copy(isGenerating = true, error = null) }
             try {
                 val impl = repository as com.aidebate.data.repository.ArgumentMapRepositoryImpl
+                val debateTurns = impl.generateThreeRoundDebate(_uiState.value.topicId)
+                _uiState.update { it.copy(generationDebateTurns = debateTurns) }
+                val graph = impl.generateArgumentMap(_uiState.value.topicId, debateTurns)
                 repository.deleteAllForTopic(_uiState.value.topicId)
-                val graph = impl.generateArgumentMap(_uiState.value.topicId)
                 graph.nodes.forEach { repository.saveNode(it) }
                 graph.edges.forEach { repository.saveEdge(it) }
-                _uiState.update { it.copy(isGenerating = false) }
+                _uiState.update { it.copy(isGenerating = false, generationDebateTurns = emptyList()) }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(isGenerating = false,
+                        generationDebateTurns = emptyList(),
                         error = e.message ?: "Failed to generate map")
                 }
             }

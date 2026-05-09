@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -28,9 +29,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.ArgumentEdge
+import com.aidebate.domain.model.ArgumentMapDebateTurn
 import com.aidebate.domain.model.ArgumentNode
 import com.aidebate.domain.model.EdgeRelation
 import com.aidebate.domain.model.NodeType
@@ -223,16 +226,7 @@ fun ArgumentMapScreen(
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(300))
             ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Card(shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(4.dp)) {
-                        Row(Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(Modifier.size(24.dp))
-                            Spacer(Modifier.width(16.dp))
-                            Text(t.generatingMap,
-                                style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
+                GenerationDebateOverlay(uiState = uiState)
             }
 
             // Error
@@ -263,6 +257,140 @@ fun ArgumentMapScreen(
             NodeEditDialog(uiState = uiState, viewModel = viewModel)
         }
     }
+    }
+}
+
+@Composable
+private fun GenerationDebateOverlay(uiState: ArgumentMapUiState) {
+    val t = LocalTranslation.current
+    val debateTurns = uiState.generationDebateTurns
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(RhetorixColors.BackgroundDeep.copy(alpha = 0.72f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(190.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            RhetorixColors.BackgroundDeep.copy(alpha = 0.96f),
+                            RhetorixColors.BackgroundDeep.copy(alpha = 0.72f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(220.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            RhetorixColors.BackgroundDeep.copy(alpha = 0.78f),
+                            RhetorixColors.BackgroundDeep.copy(alpha = 0.98f)
+                        )
+                    )
+                )
+        )
+
+        GlassCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 320.dp, max = 470.dp)
+                .padding(horizontal = Spacing.lg),
+            accent = Primary,
+            level = GlassCardLevel.Focus
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(Spacing.lg),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(28.dp),
+                    strokeWidth = 2.dp,
+                    color = Primary
+                )
+                Spacer(Modifier.height(Spacing.md))
+                Text(
+                    if (debateTurns.isEmpty()) "AI is preparing a 3-round debate..." else "Extracting argument relationships...",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    t.generatingMap,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(Spacing.lg))
+
+                val previewTurns = if (debateTurns.isEmpty()) {
+                    listOf(
+                        ArgumentMapDebateTurn(1, "PRO", "Drafting the proposition's opening claim..."),
+                        ArgumentMapDebateTurn(1, "CON", "Preparing the counter-position and objections...")
+                    )
+                } else debateTurns
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+                ) {
+                    previewTurns.takeLast(6).forEach { turn ->
+                        DebatePreviewRow(turn)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DebatePreviewRow(turn: ArgumentMapDebateTurn) {
+    val isPro = turn.side.equals("PRO", ignoreCase = true)
+    val accent = if (isPro) Primary else Secondary
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        accent = accent,
+        level = GlassCardLevel.Interactive
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Spacing.md),
+            verticalAlignment = Alignment.Top
+        ) {
+            Surface(
+                shape = Radii.smallShape,
+                color = accent.copy(alpha = 0.18f)
+            ) {
+                Text(
+                    "R${turn.round} ${if (isPro) "Pro" else "Con"}",
+                    modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = accent,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(Modifier.width(Spacing.md))
+            Text(
+                turn.content,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f),
+                maxLines = 3
+            )
+        }
     }
 }
 
