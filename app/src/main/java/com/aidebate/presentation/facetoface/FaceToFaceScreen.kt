@@ -40,15 +40,18 @@ fun FaceToFaceScreen(
 
     LaunchedEffect(sessionId) { viewModel.initialize(sessionId) }
 
+    AiBackdrop {
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         uiState.topicTitle.ifBlank { t.faceToFaceLabel },
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        textAlign = TextAlign.Center
                     )
                 },
                 navigationIcon = {
@@ -56,9 +59,7 @@ fun FaceToFaceScreen(
                         Icon(Icons.Default.ArrowBack, t.back)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                colors = glassTopAppBarColors()
             )
         }
     ) { padding ->
@@ -117,7 +118,8 @@ fun FaceToFaceScreen(
                         shape = Radii.mediumShape,
                         enabled = !uiState.isSaving,
                         minLines = 4,
-                        maxLines = 8
+                        maxLines = 8,
+                        colors = glassTextFieldColors()
                     )
 
                     // Submit button
@@ -127,7 +129,8 @@ fun FaceToFaceScreen(
                             .fillMaxWidth()
                             .height(52.dp),
                         enabled = uiState.userInput.isNotBlank() && !uiState.isSaving,
-                        shape = Radii.mediumShape
+                        shape = Radii.mediumShape,
+                        colors = glassButtonColors()
                     ) {
                         if (uiState.isSaving) {
                             CircularProgressIndicator(
@@ -152,6 +155,7 @@ fun FaceToFaceScreen(
                 }
             }
         }
+    }
     }
 
     // Pass overlay (full screen, transparent)

@@ -95,6 +95,7 @@ data class Translation(
 
     // === Topic Selection ===
     val chooseTopic: String,
+    val allTopicsFilter: String,
     val customTopic: String,
     val searchTopics: String,
     val clear: String,
@@ -348,6 +349,7 @@ val EnglishTranslation = Translation(
 
     // Topic Selection
     chooseTopic = "Choose a Topic",
+    allTopicsFilter = "All",
     customTopic = "Custom topic",
     searchTopics = "Search topics...",
     clear = "Clear",
@@ -601,6 +603,7 @@ val ChineseTranslation = Translation(
 
     // Topic Selection
     chooseTopic = "选择话题",
+    allTopicsFilter = "全部",
     customTopic = "自定义话题",
     searchTopics = "搜索话题...",
     clear = "清除",

@@ -2,6 +2,7 @@
 
 package com.aidebate.presentation.history
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -30,74 +33,132 @@ fun DebateHistoryScreen(
     onDebateSelected: (String) -> Unit,
     onRebuttalSelected: (String) -> Unit,
     onBack: () -> Unit,
+    onHome: () -> Unit = onBack,
+    onTools: () -> Unit = {},
+    onSettings: () -> Unit = {},
     viewModel: DebateHistoryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val t = LocalTranslation.current
+    var filter by remember { mutableStateOf(HistoryFilter.ALL) }
+    val filteredItems = remember(uiState.items, filter) {
+        when (filter) {
+            HistoryFilter.ALL -> uiState.items
+            HistoryFilter.DEBATES -> uiState.items.filterIsInstance<HistoryItem.Debate>()
+            HistoryFilter.TRAINING -> uiState.items.filterIsInstance<HistoryItem.Rebuttal>()
+        }
+    }
 
     LaunchedEffect(Unit) { viewModel.loadSessions() }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(t.history) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, t.back)
+    AiBackdrop {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(t.history, fontWeight = FontWeight.SemiBold) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, t.back)
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = onSettings) {
+                            Icon(Icons.Default.Tune, t.settings)
+                        }
+                    },
+                    colors = glassTopAppBarColors()
+                )
+            },
+            bottomBar = {
+                HistoryBottomBar(
+                    onHome = onHome,
+                    onHistory = {},
+                    onTools = onTools,
+                    onProfile = onSettings,
+                )
+            }
+        ) { padding ->
+            if (uiState.isEmpty) {
+                Box(
+                    Modifier.fillMaxSize().padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.History, null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                        Spacer(Modifier.height(Spacing.lg))
+                        Text(
+                            t.noActivityYet,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                        Text(
+                            t.noActivitySubtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
                     }
                 }
-            )
-        }
-    ) { padding ->
-        if (uiState.isEmpty) {
-            Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.History, null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                    )
-                    Spacer(Modifier.height(Spacing.lg))
-                    Text(
-                        t.noActivityYet,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                    Text(
-                        t.noActivitySubtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                    )
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(Spacing.lg),
-                verticalArrangement = Arrangement.spacedBy(Spacing.sm)
-            ) {
-                items(uiState.items, key = { it.id }) { item ->
-                    when (item) {
-                        is HistoryItem.Debate -> DebateHistoryCard(
-                            item = item,
-                            onClick = { onDebateSelected(item.id) },
-                            onDelete = { viewModel.deleteSession(item.id) }
-                        )
-                        is HistoryItem.Rebuttal -> RebuttalHistoryCard(
-                            item = item,
-                            onClick = { onRebuttalSelected(item.id) }
-                        )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentPadding = PaddingValues(Spacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+                ) {
+                    item(key = "filters") {
+                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                            HistoryFilterChip("All", filter == HistoryFilter.ALL) { filter = HistoryFilter.ALL }
+                            HistoryFilterChip("Debates", filter == HistoryFilter.DEBATES) { filter = HistoryFilter.DEBATES }
+                            HistoryFilterChip("Training", filter == HistoryFilter.TRAINING) { filter = HistoryFilter.TRAINING }
+                        }
+                    }
+                    items(filteredItems, key = { it.id }) { item ->
+                        when (item) {
+                            is HistoryItem.Debate -> DebateHistoryCard(
+                                item = item,
+                                onClick = { onDebateSelected(item.id) },
+                                onDelete = { viewModel.deleteSession(item.id) }
+                            )
+                            is HistoryItem.Rebuttal -> RebuttalHistoryCard(
+                                item = item,
+                                onClick = { onRebuttalSelected(item.id) }
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+private enum class HistoryFilter { ALL, DEBATES, TRAINING }
+
+@Composable
+private fun HistoryFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = GlassSurface,
+            selectedContainerColor = GlassSurfaceStrong,
+            labelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.68f),
+            selectedLabelColor = MaterialTheme.colorScheme.onSurface
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selected,
+            borderColor = GlassStroke,
+            selectedBorderColor = Primary.copy(alpha = 0.8f)
+        )
+    )
 }
 
 @Composable
@@ -110,13 +171,10 @@ private fun DebateHistoryCard(
     var showDelete by remember { mutableStateOf(false) }
     val summary = item.summary
 
-    Card(
+    GlassCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = Radii.mediumShape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        )
+        accent = Primary
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
@@ -224,13 +282,10 @@ private fun RebuttalHistoryCard(
     onClick: () -> Unit
 ) {
     val t = LocalTranslation.current
-    Card(
+    GlassCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = Radii.mediumShape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f)
-        )
+        accent = Tertiary
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
@@ -306,6 +361,41 @@ private fun RebuttalHistoryCard(
                 Icons.Default.ChevronRight, null,
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
             )
+        }
+    }
+}
+
+@Composable
+private fun HistoryBottomBar(
+    onHome: () -> Unit,
+    onHistory: () -> Unit,
+    onTools: () -> Unit,
+    onProfile: () -> Unit,
+) {
+    val t = LocalTranslation.current
+    Row(
+        modifier = Modifier
+            .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
+            .fillMaxWidth()
+            .height(58.dp)
+            .background(GlassSurfaceStrong, Radii.largeShape)
+            .padding(horizontal = Spacing.md),
+        horizontalArrangement = Arrangement.SpaceAround,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        HistoryBottomItem(Icons.Filled.Home, t.homeTab, false, onHome)
+        HistoryBottomItem(Icons.Filled.History, t.debatesTab, true, onHistory)
+        HistoryBottomItem(Icons.Filled.AccountTree, t.toolsTab, false, onTools)
+        HistoryBottomItem(Icons.Filled.Person, t.profileTab, false, onProfile)
+    }
+}
+
+@Composable
+private fun HistoryBottomItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icon, contentDescription = label, tint = if (selected) WarmGlow else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f), modifier = Modifier.size(20.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = if (selected) WarmGlow else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f))
         }
     }
 }

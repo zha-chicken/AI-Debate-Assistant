@@ -80,73 +80,79 @@ fun DebateScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            uiState.topicTitle.ifBlank { t.debateTitle },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1
-                        )
-                        if (uiState.currentPhase != null && uiState.format == DebateFormat.STRUCTURED) {
+    AiBackdrop {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                uiState.currentPhase!!.name.lowercase()
-                                    .replaceFirstChar { it.uppercase() },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
+                                uiState.topicTitle.ifBlank { t.debateTitle },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 2,
+                                textAlign = TextAlign.Center
                             )
+                            if (uiState.currentPhase != null && uiState.format == DebateFormat.STRUCTURED) {
+                                Text(
+                                    uiState.currentPhase!!.name.lowercase()
+                                        .replaceFirstChar { it.uppercase() },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = PrimaryLight
+                                )
+                            }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (uiState.turns.isNotEmpty()) viewModel.endDebate()
-                        onBack()
-                    }) {
-                        Icon(Icons.Default.ArrowBack, t.back)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        },
-        bottomBar = {
-            val isUserTurn = uiState.contextualState is DebateContextualState.WaitingForUserInput
-            if (isUserTurn && uiState.mode == DebateMode.USER_VS_AI) {
-                UserInputBar(
-                    value = uiState.userInputText,
-                    onValueChange = { viewModel.onUserInputChanged(it) },
-                    onSend = { viewModel.submitUserTurn() },
-                    enabled = !uiState.isThinking
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            if (uiState.turns.isNotEmpty()) viewModel.endDebate()
+                            onBack()
+                        }) {
+                            Icon(Icons.Default.ArrowBack, t.back)
+                        }
+                    },
+                    colors = glassTopAppBarColors()
                 )
             }
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            when {
-                uiState.isInitializing -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+            ,
+            bottomBar = {
+                val isUserTurn = uiState.contextualState is DebateContextualState.WaitingForUserInput
+                if (isUserTurn && uiState.mode == DebateMode.USER_VS_AI) {
+                    UserInputBar(
+                        value = uiState.userInputText,
+                        onValueChange = { viewModel.onUserInputChanged(it) },
+                        onSend = { viewModel.submitUserTurn() },
+                        enabled = !uiState.isThinking
+                    )
                 }
-                else -> {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-                            contentPadding = PaddingValues(Spacing.lg),
-                            verticalArrangement = Arrangement.spacedBy(Spacing.md)
-                        ) {
+            }
+        ) { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                when {
+                    uiState.isInitializing -> {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    else -> {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                contentPadding = PaddingValues(Spacing.lg),
+                                verticalArrangement = Arrangement.spacedBy(Spacing.md)
+                            ) {
+                            item(key = "status") {
+                                DebateStatusPanel(uiState)
+                            }
+
                             // Turns with phase dividers
                             items(timeline.size, key = { timeline[it].hashCode() }) { index ->
                                 when (val item = timeline[index]) {
@@ -227,12 +233,74 @@ fun DebateScreen(
                         }
                     }
 
-                    // AI vs AI split-color background
-                    if (isAiVsAi && uiState.turns.isNotEmpty()) {
-                        AiVsAiBackground()
+                        // AI vs AI split-color background
+                        if (isAiVsAi && uiState.turns.isNotEmpty()) {
+                            AiVsAiBackground()
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DebateStatusPanel(uiState: DebateUiState) {
+    val t = LocalTranslation.current
+    val supportTurns = uiState.turns.count { it.speakerRole == SpeakerRole.AI_PROPOSITION || it.speakerRole == SpeakerRole.USER }
+    val opposeTurns = uiState.turns.count { it.speakerRole == SpeakerRole.AI_OPPOSITION }
+    val roundLabel = uiState.currentPhase?.let {
+        when (it) {
+            StructuredPhase.OPENING -> t.phaseOpening
+            StructuredPhase.REBUTTAL -> t.phaseRebuttal
+            StructuredPhase.CLOSING -> t.phaseClosing
+        }
+    } ?: if (uiState.format == DebateFormat.FREE_FLOW) t.freeFlow else t.debateTitle
+
+    GlassCard(modifier = Modifier.fillMaxWidth(), accent = Primary) {
+        Column(Modifier.fillMaxWidth().padding(Spacing.md)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "$supportTurns",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = PrimaryLight,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.width(Spacing.sm))
+                Text(t.argueFor, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f))
+                Spacer(Modifier.weight(1f))
+                Surface(shape = Radii.smallShape, color = GlassSurfaceStrong) {
+                    Text(
+                        roundLabel,
+                        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f)
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                Text(t.argueAgainst, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f))
+                Spacer(Modifier.width(Spacing.sm))
+                Text(
+                    "$opposeTurns",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Secondary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.height(Spacing.sm))
+            LinearProgressIndicator(
+                progress = { (supportTurns + opposeTurns).coerceAtMost(12) / 12f },
+                modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(999.dp)),
+                color = Secondary,
+                trackColor = Primary.copy(alpha = 0.28f)
+            )
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                "Turn ${uiState.turns.size}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.48f),
+                modifier = Modifier.align(Alignment.End)
+            )
         }
     }
 }
@@ -470,8 +538,9 @@ fun UserInputBar(
 ) {
     val t = LocalTranslation.current
     Surface(
-        tonalElevation = 3.dp,
-        shadowElevation = 8.dp
+        color = GlassSurfaceStrong,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
     ) {
         Row(
             modifier = Modifier
@@ -487,18 +556,22 @@ fun UserInputBar(
                 shape = RoundedCornerShape(24.dp),
                 minLines = 1,
                 maxLines = 4,
-                enabled = enabled
+                enabled = enabled,
+                colors = glassTextFieldColors()
             )
             Spacer(Modifier.width(Spacing.sm))
             FilledIconButton(
                 onClick = onSend,
                 enabled = enabled && value.isNotBlank(),
                 modifier = Modifier.size(48.dp),
-                shape = CircleShape
+                shape = CircleShape,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = Primary.copy(alpha = 0.72f),
+                    contentColor = OnSurfaceDark
+                )
             ) {
                 Icon(Icons.Default.Send, t.send)
             }
         }
     }
 }
-

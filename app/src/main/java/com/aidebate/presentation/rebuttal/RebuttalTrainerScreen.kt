@@ -47,33 +47,37 @@ fun RebuttalTrainerScreen(
         if (sessionId.isNotBlank()) viewModel.loadSession(sessionId)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(t.rebuttalTrainerTitle, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (uiState.phase != TrainerPhase.TOPIC_SELECT) viewModel.backToTopics()
-                        else onBack()
-                    }) {
-                        Icon(Icons.Default.ArrowBack, t.back)
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when (uiState.phase) {
-                TrainerPhase.TOPIC_SELECT -> TopicSelectPhase(uiState, viewModel)
-                TrainerPhase.SETUP -> SetupPhase(uiState, viewModel)
-                TrainerPhase.READY -> ReadyPhase(uiState, viewModel)
-                TrainerPhase.RESPONDING -> RespondingPhase(uiState, viewModel)
-                TrainerPhase.SCORING -> ScoringPhase()
-                TrainerPhase.RESULT -> ResultPhase(uiState, viewModel)
+    AiBackdrop {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(t.rebuttalTrainerTitle, fontWeight = FontWeight.SemiBold) },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            if (uiState.phase != TrainerPhase.TOPIC_SELECT) viewModel.backToTopics()
+                            else onBack()
+                        }) {
+                            Icon(Icons.Default.ArrowBack, t.back)
+                        }
+                    },
+                    colors = glassTopAppBarColors()
+                )
             }
+        ) { padding ->
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                when (uiState.phase) {
+                    TrainerPhase.TOPIC_SELECT -> TopicSelectPhase(uiState, viewModel)
+                    TrainerPhase.SETUP -> SetupPhase(uiState, viewModel)
+                    TrainerPhase.READY -> ReadyPhase(uiState, viewModel)
+                    TrainerPhase.RESPONDING -> RespondingPhase(uiState, viewModel)
+                    TrainerPhase.SCORING -> ScoringPhase()
+                    TrainerPhase.RESULT -> ResultPhase(uiState, viewModel)
+                }
 
-            if (uiState.error != null) {
-                ErrorBanner(uiState.error!!) { viewModel.clearError() }
+                if (uiState.error != null) {
+                    ErrorBanner(uiState.error!!) { viewModel.clearError() }
+                }
             }
         }
     }
@@ -95,13 +99,10 @@ private fun TopicSelectPhase(uiState: RebuttalTrainerUiState, viewModel: Rebutta
         Spacer(Modifier.height(Spacing.lg))
 
         uiState.topics.forEach { topic ->
-            Card(
+            GlassCard(
                 onClick = { viewModel.selectTopic(topic.id, topic.title) },
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                shape = Radii.mediumShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
+                accent = Primary
             ) {
                 Row(
                     Modifier.padding(Spacing.lg),
@@ -132,12 +133,7 @@ private fun SetupPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrain
     val t = LocalTranslation.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.lg)) {
         if (uiState.selectedTopicTitle.isNotBlank()) {
-            Card(
-                shape = Radii.mediumShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                )
-            ) {
+            GlassCard(modifier = Modifier.fillMaxWidth(), accent = Primary) {
                 Row(Modifier.padding(Spacing.lg)) {
                     Icon(Icons.Filled.Topic, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(Spacing.md))
@@ -198,7 +194,8 @@ private fun SetupPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrain
             onClick = { viewModel.startSession() },
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = Radii.mediumShape,
-            enabled = uiState.selectedTopicId != null
+            enabled = uiState.selectedTopicId != null,
+            colors = glassButtonColors()
         ) {
             if (uiState.isGenerating) {
                 CircularProgressIndicator(
@@ -229,10 +226,7 @@ private fun ReadyPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrain
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
         Spacer(Modifier.height(Spacing.lg))
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-            shape = Radii.largeShape
-        ) {
+        GlassCard(modifier = Modifier.fillMaxWidth(), accent = Secondary) {
             Column(Modifier.padding(Spacing.xl)) {
                 Text(t.theArgument,
                     style = MaterialTheme.typography.labelMedium,
@@ -262,7 +256,8 @@ private fun ReadyPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrain
         Button(
             onClick = { viewModel.startTimer() },
             modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = Radii.mediumShape
+            shape = Radii.mediumShape,
+            colors = glassButtonColors()
         ) {
             Icon(Icons.Filled.Timer, null)
             Spacer(Modifier.width(Spacing.sm))
@@ -303,11 +298,9 @@ private fun RespondingPhase(uiState: RebuttalTrainerUiState, viewModel: Rebuttal
     ) {
         Column(Modifier.fillMaxSize().padding(Spacing.lg)) {
             // Circular timer
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = if (urgency) errorContainer else primaryContainer
-                ),
-                shape = Radii.largeShape
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                accent = if (urgency) errorColor else primaryColor
             ) {
                 Row(
                     Modifier.fillMaxWidth().padding(Spacing.lg),
@@ -338,10 +331,7 @@ private fun RespondingPhase(uiState: RebuttalTrainerUiState, viewModel: Rebuttal
             Spacer(Modifier.height(Spacing.md))
 
             // Prompt preview
-            Card(
-                colors = CardDefaults.cardColors(containerColor = surfaceVariant),
-                shape = Radii.smallShape
-            ) {
+            GlassCard(modifier = Modifier.fillMaxWidth(), accent = Primary) {
                 Text(uiState.promptArgument, Modifier.padding(Spacing.md),
                     style = MaterialTheme.typography.bodySmall, maxLines = 2)
             }
@@ -356,7 +346,8 @@ private fun RespondingPhase(uiState: RebuttalTrainerUiState, viewModel: Rebuttal
                 label = { Text(t.writeRebuttal) },
                 placeholder = { Text(t.rebuttalPlaceholder) },
                 minLines = 5,
-                shape = Radii.mediumShape
+                shape = Radii.mediumShape,
+                colors = glassTextFieldColors()
             )
 
             Spacer(Modifier.height(Spacing.md))
@@ -364,7 +355,8 @@ private fun RespondingPhase(uiState: RebuttalTrainerUiState, viewModel: Rebuttal
                 onClick = { viewModel.submitRebuttal() },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = Radii.mediumShape,
-                enabled = uiState.userResponse.isNotBlank()
+                enabled = uiState.userResponse.isNotBlank(),
+                colors = glassButtonColors()
             ) {
                 Icon(Icons.Filled.Send, t.send)
                 Spacer(Modifier.width(Spacing.sm))
@@ -427,10 +419,7 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
         Text(t.scoreCard, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(Spacing.xl))
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            shape = Radii.largeShape
-        ) {
+        GlassCard(modifier = Modifier.fillMaxWidth(), accent = Primary) {
             Column(
                 Modifier.fillMaxWidth().padding(Spacing.xxl),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -463,9 +452,9 @@ private fun ResultPhase(uiState: RebuttalTrainerUiState, viewModel: RebuttalTrai
 
         Spacer(Modifier.height(Spacing.xl))
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-            shape = Radii.largeShape
+        GlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            accent = Secondary
         ) {
             Column(Modifier.padding(Spacing.xl)) {
                 Text(t.feedback, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,

@@ -34,13 +34,21 @@ fun TopicSelectionScreen(
 
     var showCustomDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(uiState.customTopicResult) {
+        uiState.customTopicResult?.let { topicId ->
+            onTopicSelected(topicId)
+            viewModel.clearCustomTopicResult()
+        }
+    }
 
     AiBackdrop {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
-                    title = { Text(t.chooseTopic) },
+                    title = { Text(t.chooseTopic, fontWeight = FontWeight.SemiBold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.Default.ArrowBack, t.back)
@@ -84,32 +92,6 @@ fun TopicSelectionScreen(
                     Spacer(Modifier.height(Spacing.sm))
                 }
 
-                // Custom topic shortcut
-                item(key = "customTopic") {
-                    GlassCard(
-                        onClick = { showCustomDialog = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        accent = MaterialTheme.colorScheme.primary
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(Spacing.md))
-                            Column {
-                                Text(t.writeYourOwnTopic,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface)
-                                Text(t.customTopicHint,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                            }
-                        }
-                    }
-                }
-
             // Category chips
             if (uiState.categories.isNotEmpty()) {
                 item(key = "chips") {
@@ -119,14 +101,23 @@ fun TopicSelectionScreen(
                             .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                     ) {
+                        FilterChip(
+                            selected = selectedCategory == null,
+                            onClick = { selectedCategory = null },
+                            label = { Text(t.allTopicsFilter) },
+                            colors = glassFilterChipColors(),
+                            border = glassFilterChipBorder(selectedCategory == null)
+                        )
                         uiState.categories.forEach { category ->
                             FilterChip(
-                                selected = false,
-                                onClick = { },
+                                selected = selectedCategory == category,
+                                onClick = { selectedCategory = category },
                                 label = { Text(category) },
                                 leadingIcon = {
                                     Icon(Icons.Default.Topic, null, Modifier.size(16.dp))
-                                }
+                                },
+                                colors = glassFilterChipColors(),
+                                border = glassFilterChipBorder(selectedCategory == category)
                             )
                         }
                     }
@@ -134,7 +125,9 @@ fun TopicSelectionScreen(
             }
 
             // Topic list by category
-            uiState.categories.forEach { category ->
+            uiState.categories
+                .filter { selectedCategory == null || it == selectedCategory }
+                .forEach { category ->
                 val categoryTopics = uiState.topicsByCategory[category] ?: emptyList()
                 val filtered = if (searchQuery.isBlank()) categoryTopics
                 else categoryTopics.filter {
@@ -214,6 +207,24 @@ fun TopicSelectionScreen(
         )
     }
 }
+
+@Composable
+private fun glassFilterChipColors() = FilterChipDefaults.filterChipColors(
+    containerColor = GlassSurface,
+    selectedContainerColor = GlassSurfaceStrong,
+    labelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+    selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+    iconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+    selectedLeadingIconColor = Primary
+)
+
+@Composable
+private fun glassFilterChipBorder(selected: Boolean) = FilterChipDefaults.filterChipBorder(
+    enabled = true,
+    selected = selected,
+    borderColor = GlassStroke,
+    selectedBorderColor = Primary.copy(alpha = 0.8f)
+)
 
 @Composable
 private fun TopicCard(

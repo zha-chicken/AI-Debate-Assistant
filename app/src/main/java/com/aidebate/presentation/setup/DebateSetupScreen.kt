@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -55,67 +56,68 @@ fun DebateSetupScreen(
         f2fSessionId.value?.let { onStartFaceToFace(it) }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(t.debateSetup) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, t.back)
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+    AiBackdrop {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(t.debateSetup, fontWeight = FontWeight.SemiBold) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, t.back)
+                        }
+                    },
+                    colors = glassTopAppBarColors()
+                )
             }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(Spacing.lg),
-                verticalArrangement = Arrangement.spacedBy(Spacing.lg)
-            ) {
-                // Topic info
-                TopicCard(uiState.topicTitle)
-
-                // Debate Mode
-                SectionLabel(t.debateMode)
-                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                    ModeCard(
-                        title = t.userVsAi,
-                        icon = Icons.Default.Person,
-                        selected = uiState.selectedMode == DebateMode.USER_VS_AI,
-                        onClick = { viewModel.onModeSelected(DebateMode.USER_VS_AI) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ModeCard(
-                        title = t.aiVsAi,
-                        icon = Icons.Default.Adb,
-                        selected = uiState.selectedMode == DebateMode.AI_VS_AI,
-                        onClick = { viewModel.onModeSelected(DebateMode.AI_VS_AI) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ModeCard(
-                        title = t.faceToFaceLabel,
-                        icon = Icons.Default.Forum,
-                        selected = uiState.selectedMode == DebateMode.USER_VS_USER,
-                        onClick = { viewModel.onModeSelected(DebateMode.USER_VS_USER) },
-                        modifier = Modifier.weight(1f)
-                    )
+        ) { padding ->
+            if (uiState.isLoading) {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(Spacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.lg)
+                ) {
+                    // Topic info
+                    TopicCard(uiState.topicTitle)
+
+                    // Debate Mode
+                    SectionLabel(t.debateMode)
+                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                        ModeCard(
+                            title = t.userVsAi,
+                            icon = Icons.Default.Person,
+                            selected = uiState.selectedMode == DebateMode.USER_VS_AI,
+                            onClick = { viewModel.onModeSelected(DebateMode.USER_VS_AI) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ModeCard(
+                            title = t.aiVsAi,
+                            icon = Icons.Default.Adb,
+                            selected = uiState.selectedMode == DebateMode.AI_VS_AI,
+                            onClick = { viewModel.onModeSelected(DebateMode.AI_VS_AI) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ModeCard(
+                            title = t.faceToFaceLabel,
+                            icon = Icons.Default.Forum,
+                            selected = uiState.selectedMode == DebateMode.USER_VS_USER,
+                            onClick = { viewModel.onModeSelected(DebateMode.USER_VS_USER) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
 
                 // Face-to-Face description (only for F2F)
                 AnimatedVisibility(visible = uiState.selectedMode == DebateMode.USER_VS_USER) {
-                    Card(
-                        shape = Radii.mediumShape,
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
-                        )
+                    GlassCard(
+                        accent = Primary,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
                             modifier = Modifier.padding(Spacing.lg),
@@ -247,7 +249,8 @@ fun DebateSetupScreen(
                     onClick = { viewModel.startDebate() },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     enabled = uiState.canStart,
-                    shape = Radii.mediumShape
+                    shape = Radii.mediumShape,
+                    colors = glassButtonColors()
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = null)
                     Spacer(Modifier.width(Spacing.sm))
@@ -258,6 +261,7 @@ fun DebateSetupScreen(
                 }
 
                 Spacer(Modifier.height(Spacing.xl))
+                }
             }
         }
     }
@@ -266,12 +270,7 @@ fun DebateSetupScreen(
 @Composable
 private fun TopicCard(title: String) {
     val t = LocalTranslation.current
-    Card(
-        shape = Radii.mediumShape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        )
-    ) {
+    GlassCard(modifier = Modifier.fillMaxWidth(), accent = Primary) {
         Column(modifier = Modifier.padding(Spacing.lg)) {
             Text(
                 t.topic,
@@ -295,12 +294,7 @@ private fun LivePreviewPanel(
     oppositionProvider: AiProvider?,
 ) {
     val t = LocalTranslation.current
-    Card(
-        shape = Radii.mediumShape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        )
-    ) {
+    GlassCard(modifier = Modifier.fillMaxWidth(), accent = Tertiary) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -392,18 +386,11 @@ private fun ModeCard(
     modifier: Modifier = Modifier,
     subtitle: String? = null
 ) {
-    Card(
+    GlassCard(
         onClick = onClick,
         modifier = modifier,
-        shape = Radii.mediumShape,
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        border = if (selected) CardDefaults.outlinedCardBorder().copy(
-            width = 2.dp,
-            brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary)
-        ) else null
+        selected = selected,
+        accent = Primary
     ) {
         Column(
             modifier = Modifier.padding(Spacing.lg),
@@ -412,7 +399,7 @@ private fun ModeCard(
             if (icon != null) {
                 Icon(
                     icon, contentDescription = null,
-                    tint = if (selected) MaterialTheme.colorScheme.primary
+                    tint = if (selected) Primary
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
                 Spacer(Modifier.height(Spacing.sm))
@@ -421,7 +408,7 @@ private fun ModeCard(
                 title,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                color = if (selected) MaterialTheme.colorScheme.onSurface
                 else MaterialTheme.colorScheme.onSurface
             )
             if (subtitle != null) {
@@ -447,12 +434,7 @@ private fun ProviderSelector(
     val t = LocalTranslation.current
     var expanded by remember { mutableStateOf(false) }
 
-    Card(
-        shape = Radii.mediumShape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        )
-    ) {
+    GlassCard(modifier = Modifier.fillMaxWidth(), accent = Primary) {
         Column(modifier = Modifier.padding(Spacing.lg)) {
             Text(
                 label,
@@ -468,7 +450,8 @@ private fun ProviderSelector(
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    shape = Radii.smallShape
+                    shape = Radii.smallShape,
+                    colors = glassTextFieldColors()
                 )
                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     providers.forEach { config ->
@@ -498,7 +481,8 @@ private fun ProviderSelector(
                     placeholder = { Text(selectedProvider.defaultBaseUrl) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    shape = Radii.smallShape
+                    shape = Radii.smallShape,
+                    colors = glassTextFieldColors()
                 )
             }
         }

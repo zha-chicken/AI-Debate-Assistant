@@ -27,7 +27,11 @@ import com.aidebate.presentation.facetoface.FaceToFaceScreen
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
-    data object TopicSelection : Screen("topic_selection")
+    data object TopicSelection : Screen("topic_selection?target={target}") {
+        const val TARGET_DEBATE = "debate"
+        const val TARGET_ARGUMENT_MAP = "argument_map"
+        fun createRoute(target: String = TARGET_DEBATE) = "topic_selection?target=$target"
+    }
     data object DebateSetup : Screen("debate_setup/{topicId}") {
         fun createRoute(topicId: String) = "debate_setup/$topicId"
     }
@@ -83,24 +87,39 @@ fun AppNavHost(
     ) {
         composable(Screen.Home.route) {
             HomeScreen(
-                onNewDebate = { navController.navigate(Screen.TopicSelection.route) },
+                onNewDebate = { navController.navigate(Screen.TopicSelection.createRoute()) },
                 onHistory = { navController.navigate(Screen.History.route) },
                 onSettings = { navController.navigate(Screen.Settings.route) },
                 onDonation = { navController.navigate(Screen.Donation.route) },
                 onArgumentMap = {
-                    navController.navigate(Screen.TopicSelection.route + "?for=argument_map")
+                    navController.navigate(Screen.TopicSelection.createRoute(Screen.TopicSelection.TARGET_ARGUMENT_MAP))
                 },
                 onRebuttalTrainer = { navController.navigate(Screen.RebuttalTrainer.route) },
                 onFallacyDetector = { navController.navigate(Screen.FallacyDetector.route) },
-                onFaceToFace = { navController.navigate(Screen.TopicSelection.route) },
+                onFaceToFace = { navController.navigate(Screen.TopicSelection.createRoute()) },
                 onTools = { navController.navigate(Screen.Tools.route) }
             )
         }
 
-        composable(Screen.TopicSelection.route) {
+        composable(
+            route = Screen.TopicSelection.route,
+            arguments = listOf(
+                navArgument("target") {
+                    type = NavType.StringType
+                    defaultValue = Screen.TopicSelection.TARGET_DEBATE
+                }
+            )
+        ) { backStackEntry ->
+            val target = backStackEntry.arguments?.getString("target")
+                ?: Screen.TopicSelection.TARGET_DEBATE
             TopicSelectionScreen(
                 onTopicSelected = { topicId ->
-                    navController.navigate(Screen.DebateSetup.createRoute(topicId))
+                    when (target) {
+                        Screen.TopicSelection.TARGET_ARGUMENT_MAP ->
+                            navController.navigate(Screen.ArgumentMap.createRoute(topicId))
+                        else ->
+                            navController.navigate(Screen.DebateSetup.createRoute(topicId))
+                    }
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -161,7 +180,10 @@ fun AppNavHost(
                 onRebuttalSelected = { sessionId ->
                     navController.navigate(Screen.RebuttalTrainer.createRoute(sessionId))
                 },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onHome = { navController.popBackStack(Screen.Home.route, false) },
+                onTools = { navController.navigate(Screen.Tools.route) },
+                onSettings = { navController.navigate(Screen.Settings.route) }
             )
         }
 

@@ -20,7 +20,6 @@ import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.TopAppBarColors
-import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -152,7 +151,7 @@ fun glassTextFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
 @Composable
 fun glassButtonColors() = ButtonDefaults.buttonColors(
     containerColor = Primary.copy(alpha = 0.72f),
-    contentColor = contentColorFor(Primary),
+    contentColor = OnSurfaceDark,
     disabledContainerColor = GlassSurface,
     disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.36f),
 )

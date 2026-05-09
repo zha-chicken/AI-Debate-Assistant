@@ -30,9 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.NodeType
-import com.aidebate.presentation.theme.SuccessGreen
 import com.aidebate.presentation.localization.LocalTranslation
-import com.aidebate.presentation.theme.WarningAmber
+import com.aidebate.presentation.theme.*
 import kotlin.math.sqrt
 
 @Composable
@@ -53,14 +52,16 @@ fun ArgumentMapScreen(
         offset += panChange
     }
 
+    AiBackdrop {
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text(uiState.topicTitle.ifBlank { t.argumentMapTitle },
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold, maxLines = 1)
+                            fontWeight = FontWeight.SemiBold, maxLines = 2)
                         if (uiState.nodes.isNotEmpty()) {
                             Text(String.format(t.argumentCount, uiState.nodes.size),
                                 style = MaterialTheme.typography.bodySmall,
@@ -87,7 +88,8 @@ fun ArgumentMapScreen(
                         onAddCon = { viewModel.showAddDialog(NodeType.CON) },
                         onAddEvidence = { viewModel.showAddDialog(NodeType.EVIDENCE) }
                     )
-                }
+                },
+                colors = glassTopAppBarColors()
             )
         },
         floatingActionButton = {
@@ -126,7 +128,7 @@ fun ArgumentMapScreen(
                 Canvas(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
+                        .background(Color.Transparent)
                         .transformable(transformState)
                         .pointerInput(uiState.nodes) {
                             detectTapGestures { tapOffset ->
@@ -253,6 +255,7 @@ fun ArgumentMapScreen(
         if (uiState.showAddDialog || uiState.showEditDialog) {
             NodeEditDialog(uiState = uiState, viewModel = viewModel)
         }
+    }
     }
 }
 

@@ -47,53 +47,56 @@ fun DebateResultScreen(
 
     LaunchedEffect(sessionId) { viewModel.initialize(sessionId) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(t.debateResult) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, t.back)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        val resultText = buildString {
-                            append(String.format(t.resultTopic, uiState.topicTitle) + "\n\n")
-                            uiState.turns.forEach { turn ->
-                                append("${turn.speakerRole.name}: ${turn.content}\n\n")
-                            }
-                            if (uiState.result != null) {
-                                append(String.format(t.resultWinner, uiState.result!!.winner?.name) + "\n")
-                                append(uiState.result!!.summary)
-                            }
+    AiBackdrop {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(t.debateResult, fontWeight = FontWeight.SemiBold) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, t.back)
                         }
-                        val shareText = String.format(t.shareResult, resultText)
-                        val sendIntent = Intent().apply {
-                            action = Intent.ACTION_SEND
-                            putExtra(Intent.EXTRA_TEXT, shareText)
-                            type = "text/plain"
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            val resultText = buildString {
+                                append(String.format(t.resultTopic, uiState.topicTitle) + "\n\n")
+                                uiState.turns.forEach { turn ->
+                                    append("${turn.speakerRole.name}: ${turn.content}\n\n")
+                                }
+                                if (uiState.result != null) {
+                                    append(String.format(t.resultWinner, uiState.result!!.winner?.name) + "\n")
+                                    append(uiState.result!!.summary)
+                                }
+                            }
+                            val shareText = String.format(t.shareResult, resultText)
+                            val sendIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                                type = "text/plain"
+                            }
+                            context.startActivity(Intent.createChooser(sendIntent, t.share))
+                        }) {
+                            Icon(Icons.Default.Share, t.share)
                         }
-                        context.startActivity(Intent.createChooser(sendIntent, t.share))
-                    }) {
-                        Icon(Icons.Default.Share, t.share)
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                    },
+                    colors = glassTopAppBarColors()
+                )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(Spacing.lg),
-                verticalArrangement = Arrangement.spacedBy(Spacing.md)
-            ) {
+        ) { padding ->
+            if (uiState.isLoading) {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentPadding = PaddingValues(Spacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.md)
+                ) {
                 // Winner card
                 item(key = "winner") {
                     WinnerCard(
@@ -130,12 +133,14 @@ fun DebateResultScreen(
                     Button(
                         onClick = onBackToHome,
                         modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = Radii.mediumShape
+                        shape = Radii.mediumShape,
+                        colors = glassButtonColors()
                     ) {
                         Icon(Icons.Default.Home, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(Spacing.sm))
                         Text(t.backToHome)
                     }
+                }
                 }
             }
         }
@@ -164,13 +169,7 @@ private fun WinnerCard(
             shape = Radii.largeShape,
             isActive = true,
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = Radii.largeShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                )
-            ) {
+            GlassCard(modifier = Modifier.fillMaxWidth(), accent = winnerTokens?.color?.primary ?: WarmGlow) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -236,12 +235,7 @@ private fun TimelineSection(turns: List<DebateTurn>) {
         visible = visible,
         enter = fadeIn(tween(400, delayMillis = 200))
     ) {
-        Card(
-            shape = Radii.mediumShape,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-            )
-        ) {
+        GlassCard(modifier = Modifier.fillMaxWidth(), accent = Primary) {
             Column(modifier = Modifier.padding(Spacing.lg)) {
                 Text(
                     t.keyMoments,
@@ -313,12 +307,7 @@ private fun TurnCard(turn: DebateTurn) {
         visible = visible,
         enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 3 }
     ) {
-        Card(
-            shape = Radii.mediumShape,
-            colors = CardDefaults.cardColors(
-                containerColor = tokens.color.container.copy(alpha = 0.3f)
-            )
-        ) {
+        GlassCard(modifier = Modifier.fillMaxWidth(), accent = tokens.color.primary) {
             Column(modifier = Modifier.padding(Spacing.lg)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(

@@ -29,8 +29,8 @@ import com.aidebate.presentation.theme.*
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.delay
 
-private val HighlightYellow = Color(0xFFFFF9C4)
-private val HighlightText = Color(0xFF4A3800)
+private val HighlightYellow = Color(0x66573D36)
+private val HighlightText = Color(0xFFEAF1F4)
 
 @Composable
 fun FallacyDetectorScreen(
@@ -40,10 +40,12 @@ fun FallacyDetectorScreen(
     val uiState by viewModel.uiState.collectAsState()
     val t = LocalTranslation.current
 
+    AiBackdrop {
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text(t.fallacyDetectorTitle, fontWeight = FontWeight.Bold) },
+                title = { Text(t.fallacyDetectorTitle, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, t.back)
@@ -54,7 +56,8 @@ fun FallacyDetectorScreen(
                     IconButton(onClick = { viewModel.toggleReference() }) {
                         Icon(Icons.Filled.MenuBook, t.referenceGuide)
                     }
-                }
+                },
+                colors = glassTopAppBarColors()
             )
         }
     ) { padding ->
@@ -81,6 +84,7 @@ fun FallacyDetectorScreen(
                 }
             }
         }
+    }
     }
 }
 
@@ -112,7 +116,8 @@ private fun MainContent(
             label = { Text(t.argumentLabel) },
             placeholder = { Text(t.argumentPlaceholder) },
             minLines = 6,
-            shape = Radii.mediumShape
+            shape = Radii.mediumShape,
+            colors = glassTextFieldColors()
         )
 
         Spacer(Modifier.height(Spacing.md))
@@ -121,7 +126,8 @@ private fun MainContent(
             onClick = { viewModel.analyze() },
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = Radii.mediumShape,
-            enabled = uiState.inputText.isNotBlank() && !uiState.isAnalyzing
+            enabled = uiState.inputText.isNotBlank() && !uiState.isAnalyzing,
+            colors = glassButtonColors()
         ) {
             if (uiState.isAnalyzing) {
                 CircularProgressIndicator(
