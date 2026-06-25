@@ -10,8 +10,8 @@ It was originally built as AiDebate and later renamed to Rhetorix. The project i
 
 Android is available now. iOS is planned next.
 
-- Latest release: https://github.com/zha-chicken/AI-Debate-Assistant/releases/tag/rhetorix-v1.4
-- GitHub APK: https://github.com/zha-chicken/AI-Debate-Assistant/releases/download/rhetorix-v1.4/Rhetorix-v1.4-debug.apk
+- Latest release: https://github.com/zha-chicken/AI-Debate-Assistant/releases/tag/rhetorix-v1.6
+- GitHub APK: https://github.com/zha-chicken/AI-Debate-Assistant/releases/download/rhetorix-v1.6/Rhetorix-v1.6-debug.apk
 - Lanzou Netdisk: https://wwari.lanzouq.com/izXfA3p1aaqb
 - Lanzou password: `9yn6`
 - Landing page repository: https://github.com/zha-chicken/Rhetorix-Landing
@@ -161,7 +161,7 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ## Notes
 
-- The current public release is `rhetorix-v1.4`.
+- The current public release is `rhetorix-v1.6`.
 - The app name shown to users is Rhetorix.
 - Previous VIP, premium, paywall, and usage-limit code was removed.
 - The landing page is maintained separately in `zha-chicken/Rhetorix-Landing`.
