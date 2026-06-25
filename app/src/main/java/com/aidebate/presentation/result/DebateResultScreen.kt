@@ -31,6 +31,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.DebateTurn
 import com.aidebate.domain.model.DebateMode
 import com.aidebate.domain.model.DebateSession
+import com.aidebate.domain.model.RecommendationFeedback
+import com.aidebate.domain.model.RecommendationFeedbackReasonType
+import com.aidebate.domain.model.RecommendationFeedbackSentiment
 import com.aidebate.domain.model.SpeakerRole
 import com.aidebate.presentation.common.AiGeneratedDisclaimer
 import com.aidebate.presentation.common.GlowWrapper
@@ -115,6 +118,15 @@ fun DebateResultScreen(
                     )
                 }
 
+                if (uiState.session?.mode != DebateMode.AI_VS_AI && uiState.result != null) {
+                    item(key = "recommendationFeedback") {
+                        ResultFeedbackSection(
+                            feedback = uiState.recommendationFeedback,
+                            onRecord = viewModel::recordRecommendationFeedback
+                        )
+                    }
+                }
+
                 // Timeline visualization
                 if (uiState.turns.isNotEmpty()) {
                     item(key = "timeline") {
@@ -153,6 +165,102 @@ fun DebateResultScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ResultFeedbackSection(
+    feedback: RecommendationFeedback?,
+    onRecord: (RecommendationFeedbackSentiment, RecommendationFeedbackReasonType) -> Unit
+) {
+    val t = LocalTranslation.current
+    var pendingSentiment by remember { mutableStateOf<RecommendationFeedbackSentiment?>(null) }
+
+    GlassCard(modifier = Modifier.fillMaxWidth(), accent = Primary) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
+        ) {
+            Text(
+                t.recommendationFeedbackTitle,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                feedback?.let {
+                    "${t.saved}: ${if (it.sentiment == RecommendationFeedbackSentiment.LIKE) t.like else t.dislike} · ${if (it.reasonType == RecommendationFeedbackReasonType.CATEGORY) t.category else t.technique}"
+                } ?: t.recommendationFeedbackSubtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f)
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                FeedbackButton(
+                    title = t.like,
+                    icon = Icons.Filled.ThumbUp,
+                    selected = feedback?.sentiment == RecommendationFeedbackSentiment.LIKE,
+                    onClick = { pendingSentiment = RecommendationFeedbackSentiment.LIKE },
+                    modifier = Modifier.weight(1f)
+                )
+                FeedbackButton(
+                    title = t.dislike,
+                    icon = Icons.Filled.ThumbDown,
+                    selected = feedback?.sentiment == RecommendationFeedbackSentiment.DISLIKE,
+                    onClick = { pendingSentiment = RecommendationFeedbackSentiment.DISLIKE },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+
+    pendingSentiment?.let { sentiment ->
+        AlertDialog(
+            onDismissRequest = { pendingSentiment = null },
+            title = {
+                Text(if (sentiment == RecommendationFeedbackSentiment.LIKE) t.whatDoYouLike else t.whatDoYouDislike)
+            },
+            text = { Text(t.recommendationFeedbackSubtitle) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRecord(sentiment, RecommendationFeedbackReasonType.CATEGORY)
+                    pendingSentiment = null
+                }) {
+                    Text(t.category)
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        onRecord(sentiment, RecommendationFeedbackReasonType.TECHNIQUE)
+                        pendingSentiment = null
+                    }) {
+                        Text(t.technique)
+                    }
+                    TextButton(onClick = { pendingSentiment = null }) {
+                        Text(t.cancel)
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun FeedbackButton(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val accent = if (selected) Primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.52f)
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(44.dp),
+        shape = Radii.mediumShape
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = accent)
+        Spacer(Modifier.width(Spacing.xs))
+        Text(title, color = accent)
     }
 }
 

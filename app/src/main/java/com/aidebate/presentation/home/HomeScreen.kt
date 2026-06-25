@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Recommend
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
@@ -61,6 +62,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aidebate.domain.model.RecommendationReasonType
+import com.aidebate.domain.model.TopicRecommendation
 import com.aidebate.presentation.common.TopLevelBottomBar
 import com.aidebate.presentation.common.TopLevelDestination
 import com.aidebate.presentation.localization.LocalTranslation
@@ -88,6 +91,7 @@ fun HomeScreen(
     onFallacyDetector: () -> Unit = {},
     onFaceToFace: () -> Unit = {},
     onTools: () -> Unit = onArgumentMap,
+    onRecommendedTopic: (String) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val t = LocalTranslation.current
@@ -157,6 +161,14 @@ fun HomeScreen(
                     Spacer(Modifier.height(Spacing.lg))
                 }
 
+                stats.recommendation?.let { recommendation ->
+                    RecommendationCard(
+                        recommendation = recommendation,
+                        onClick = { onRecommendedTopic(recommendation.topic.id) }
+                    )
+                    Spacer(Modifier.height(Spacing.lg))
+                }
+
                 SectionHeader(t.sectionDebateActions)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -201,6 +213,93 @@ fun HomeScreen(
                 Spacer(Modifier.height(Spacing.xl))
             }
         }
+    }
+}
+
+@Composable
+private fun RecommendationCard(
+    recommendation: TopicRecommendation,
+    onClick: () -> Unit
+) {
+    val t = LocalTranslation.current
+    val focusText = localizedRecommendationFocus(recommendation.focus)
+    val reasonText = when (recommendation.reasonType) {
+        RecommendationReasonType.WEAKNESS -> String.format(
+            t.recommendationReasonWeakness,
+            recommendation.favoriteCategory,
+            focusText
+        )
+        RecommendationReasonType.FEEDBACK -> String.format(
+            t.recommendationReasonFeedback,
+            recommendation.topic.category
+        )
+        RecommendationReasonType.MBTI -> String.format(
+            t.recommendationReasonMbti,
+            recommendation.favoriteCategory,
+            recommendation.focus
+        )
+        RecommendationReasonType.CATEGORY -> String.format(
+            t.recommendationReasonCategory,
+            recommendation.favoriteCategory
+        )
+    }
+    GlassCard(
+        onClick = onClick,
+        accent = Primary,
+        level = GlassCardLevel.Focus,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(48.dp).softCircle(Primary.copy(alpha = 0.24f)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.Recommend, null, tint = Primary)
+            }
+            Spacer(Modifier.width(Spacing.md))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    t.recommendationTitle,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    recommendation.topic.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    reasonText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+                Text(
+                    "${t.practiceFocus}: $focusText",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.52f),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            Icon(Icons.Filled.ChevronRight, null, tint = Primary.copy(alpha = 0.76f))
+        }
+    }
+}
+
+@Composable
+private fun localizedRecommendationFocus(focus: String): String {
+    val t = LocalTranslation.current
+    return when (focus) {
+        "Needs stronger evidence" -> t.focusEvidence
+        "Needs more direct clash" -> t.focusDirectClash
+        "Needs clearer structure" -> t.focusStructure
+        "Needs stronger impact weighing" -> t.focusImpactWeighing
+        "Needs clearer definitions" -> t.focusDefinitions
+        "Liked category" -> t.focusLikedCategory
+        "Disliked category" -> t.focusDislikedCategory
+        else -> focus
     }
 }
 

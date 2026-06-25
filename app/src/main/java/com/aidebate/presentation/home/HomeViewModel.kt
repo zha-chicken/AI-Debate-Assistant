@@ -6,7 +6,9 @@ import com.aidebate.domain.model.DebateMode
 import com.aidebate.domain.model.DebateResult
 import com.aidebate.domain.model.DebateSessionSummary
 import com.aidebate.domain.model.SpeakerRole
+import com.aidebate.domain.model.TopicRecommendation
 import com.aidebate.domain.repository.DebateRepository
+import com.aidebate.domain.repository.RecommendationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,18 +20,21 @@ data class HomeStatsUiState(
     val debateCount: Int = 0,
     val winRatePercent: Int = 0,
     val winStreak: Int = 0,
+    val recommendation: TopicRecommendation? = null,
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     debateRepository: DebateRepository,
+    recommendationRepository: RecommendationRepository,
 ) : ViewModel() {
 
     val stats: StateFlow<HomeStatsUiState> = combine(
         debateRepository.getAllSessions(),
         debateRepository.getAllResults(),
-    ) { sessions, results ->
-        calculateStats(sessions, results)
+        recommendationRepository.getRecommendations(limit = 1),
+    ) { sessions, results, recommendations ->
+        calculateStats(sessions, results).copy(recommendation = recommendations.firstOrNull())
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),

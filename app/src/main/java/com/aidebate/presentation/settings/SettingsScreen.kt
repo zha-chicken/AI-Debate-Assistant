@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aidebate.domain.model.AiProvider
+import com.aidebate.domain.model.MBTIType
 import com.aidebate.domain.model.ProviderConfig
 import com.aidebate.presentation.common.TopLevelBottomBar
 import com.aidebate.presentation.common.TopLevelDestination
@@ -148,6 +149,14 @@ fun SettingsScreen(
                 }
 
                 item {
+                    MbtiCard(
+                        selected = uiState.selectedMbti,
+                        onSelected = viewModel::setMbti,
+                        t = t
+                    )
+                }
+
+                item {
                     SectionHeader(t.aiProviders)
                 }
 
@@ -166,6 +175,61 @@ fun SettingsScreen(
                         onClick = { onProviderSelected(config.provider.name) },
                         t = t
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MbtiCard(
+    selected: MBTIType?,
+    onSelected: (MBTIType?) -> Unit,
+    t: Translation
+) {
+    var expanded by remember { mutableStateOf(false) }
+    GlassCard(modifier = Modifier.fillMaxWidth(), accent = Tertiary) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                t.mbti,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                t.mbtiSubtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.58f),
+                modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+            )
+            Box {
+                OutlinedButton(
+                    onClick = { expanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = Radii.mediumShape
+                ) {
+                    Text(selected?.name ?: t.notSet, modifier = Modifier.weight(1f))
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(t.notSet) },
+                        onClick = {
+                            onSelected(null)
+                            expanded = false
+                        }
+                    )
+                    MBTIType.entries.forEach { type ->
+                        DropdownMenuItem(
+                            text = { Text(type.name) },
+                            onClick = {
+                                onSelected(type)
+                                expanded = false
+                            }
+                        )
+                    }
                 }
             }
         }

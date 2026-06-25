@@ -100,7 +100,8 @@ fun AppNavHost(
                 onRebuttalTrainer = { navController.navigate(Screen.RebuttalTrainer.route) },
                 onFallacyDetector = { navController.navigate(Screen.FallacyDetector.route) },
                 onFaceToFace = { navController.navigate(Screen.TopicSelection.createRoute()) },
-                onTools = { navController.navigate(Screen.Tools.route) }
+                onTools = { navController.navigate(Screen.Tools.route) },
+                onRecommendedTopic = { topicId -> navController.navigate(Screen.DebateSetup.createRoute(topicId)) }
             )
         }
 

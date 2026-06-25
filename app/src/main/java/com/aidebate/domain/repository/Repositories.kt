@@ -44,3 +44,17 @@ interface ContentSafetyRepository {
         preferredConfig: ProviderConfig? = null
     )
 }
+
+interface RecommendationRepository {
+    fun getRecommendations(limit: Int = 3): Flow<List<TopicRecommendation>>
+    fun observeMbti(): Flow<MBTIType?>
+    suspend fun setMbti(type: MBTIType?)
+    fun observeFeedback(sessionId: String): Flow<RecommendationFeedback?>
+    suspend fun recordFeedback(
+        sessionId: String,
+        topicTitle: String,
+        category: String,
+        sentiment: RecommendationFeedbackSentiment,
+        reasonType: RecommendationFeedbackReasonType
+    )
+}

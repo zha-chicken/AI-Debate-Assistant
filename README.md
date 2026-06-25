@@ -41,8 +41,37 @@ This Android branch has been moved closer to the current iOS Rhetorix direction:
 - Existing installs are not reset: missing default topics are added by title when the app starts.
 - Topic rows show the current user's local debate count for that topic instead of fake global popularity.
 - Custom topic creation now runs through content safety before saving.
+- Topic Recommendation 2.0 has been ported from the iOS direction to Android. It uses local debate history, judging summaries, training weakness signals, optional MBTI, and result-page like/dislike feedback to recommend the next debate topic.
 
 Live recording analysis from the iOS version is not yet implemented on Android. The Android MVP currently provides the reliable paste-and-analyze mode.
+
+## Topic Recommendation 2.0
+
+Rhetorix recommends topics from the local preset topic library instead of generating random topics with a model. The goal is to suggest topics the user is likely to find interesting while still targeting a concrete debate skill.
+
+The recommendation engine is local-first and uses only data stored on the device:
+
+- Completed or engaged debate sessions, excluding AI-vs-AI for preference learning.
+- AI-vs-AI sessions only for recent-topic repetition penalty.
+- Topic category history and per-topic debate counts.
+- AI judging summaries, used to infer recurring training weaknesses such as weak evidence, unclear definitions, weak structure, insufficient direct clash, or weak impact weighing.
+- Optional MBTI, with intentionally low weight.
+- Result-page feedback. Liking or disliking a topic's category changes future category preference. Technique feedback is recorded but does not change topic ranking.
+
+The baseline scoring formula is:
+
+```text
+score =
+  favoriteCategoryMatch * 16
+  + weaknessTrainingTagMatches * 52
+  + weaknessKeywordMatches * 18
+  + mbtiKeywordMatches * 5
+  + categoryFeedbackScore
+  - previousDebateCountForSameTopic * 9
+  - recentRepeatPenalty
+```
+
+A same-batch category diversity penalty is also applied while selecting multiple recommendations, so the app does not repeatedly show the same type of topic. Recommendation cards appear after the user has at least two non-AI-vs-AI engaged debate sessions, which prevents early recommendations from pretending to know the user.
 
 ## AI Providers
 

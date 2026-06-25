@@ -1,6 +1,7 @@
 package com.aidebate.di
 
 import com.aidebate.data.debate.DebateOrchestratorImpl
+import com.aidebate.data.recommendation.RecommendationRepositoryImpl
 import com.aidebate.data.repository.*
 import com.aidebate.domain.debate.DebateOrchestrator
 import com.aidebate.domain.repository.*
@@ -37,6 +38,9 @@ abstract class RepositoryModule {
 
     @Binds @Singleton
     abstract fun bindContentSafetyRepository(impl: ContentSafetyRepositoryImpl): ContentSafetyRepository
+
+    @Binds @Singleton
+    abstract fun bindRecommendationRepository(impl: RecommendationRepositoryImpl): RecommendationRepository
 }
 
 @Module

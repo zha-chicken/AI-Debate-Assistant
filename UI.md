@@ -283,6 +283,7 @@ Content hierarchy:
 - Abstract hero mark related to debate or reasoning
 - Short value statement
 - Dynamic stats: debates, win rate, win streak
+- Personalized recommendation card when enough local debate history exists
 - Donation/support strip
 - Quick action cards
 - Preparation tools
@@ -297,6 +298,14 @@ Current implementation includes a first-use card when the debate count is zero:
 - Purpose: start the first structured debate
 - Behavior: opens topic selection
 
+Current implementation also includes a recommendation card after the user has enough local non-AI-vs-AI debate history:
+
+- Title: Recommended debate / 推荐辩题
+- Content: recommended topic title, localized reason, and practice focus
+- Behavior: opens Debate Setup for that topic
+- Inputs: local debate history, judging summaries, optional MBTI, category like/dislike feedback, and repetition penalty
+- Visual priority: visible but lower than the core New Debate workflow, because debate remains the main product action
+
 ### Topic Selection
 
 Purpose: choose or search a debate topic.
@@ -309,7 +318,7 @@ Content:
 - All topics
 - Topic rows with title, category, usage count, and navigation affordance
 
-Topic filters must be functional. If a topic opens a specific tool, such as Argument Relationship Graph, the route should match the user's intent.
+Topic filters must be functional. If a topic opens a specific tool, such as Constructive Analysis, the route should match the user's intent.
 
 ### Debate Setup
 
@@ -364,6 +373,7 @@ Content:
 - Winner text
 - Final score
 - Short outcome explanation
+- Recommendation feedback panel for non-AI-vs-AI debates
 - Key moments timeline
 - Filter chips for all/support/oppose/turning points
 - Return home action
@@ -376,6 +386,14 @@ Winner handling rules:
 - In User vs AI debates, the result screen maps the winning side back to `You`, `AI - Support`, or `AI - Oppose`.
 - If an older saved result has contradictory data, such as `USER` as winner but a summary saying the AI clearly won, the display should prefer the summary evidence instead of showing an obviously wrong participant.
 - Result text should use near-white colors on glass surfaces.
+
+Recommendation feedback behavior:
+
+- Shows after a judged User-vs-AI or Face-to-Face debate.
+- The user can mark the topic as liked or disliked.
+- A follow-up dialog asks whether the feedback is about category or technique.
+- Category feedback affects future topic recommendations.
+- Technique feedback is recorded but does not change topic ranking.
 
 ### History
 
@@ -402,55 +420,27 @@ Content:
 - No paywall language
 - No premium feature claims
 
-### Argument Relationship Graph
+### Constructive Analysis
 
-Purpose: generate and inspect relationships between claims, evidence, objections, and rebuttals.
+Purpose: turn an opponent constructive speech into concrete challenge points.
 
-This screen is not a simple pro/con mind map. It should behave and read as a relationship graph.
-
-Generation behavior:
-
-- After the user selects a topic, AI generation should first simulate a concise 3-round AI vs AI debate.
-- The relationship graph should then be extracted from that debate transcript, not from a shallow one-shot pro/con list.
-- The generated graph should include multiple pro claims, con objections, evidence nodes, and directed relationships.
-- The graph should aim for at least 12 meaningful relationships when AI generation succeeds.
-- A generated graph with too few nodes or relationships is treated as invalid.
-- If AI graph extraction fails after the debate succeeds, Rhetorix builds a fallback graph from the 3-round debate transcript instead of returning to an empty screen.
-
-Loading state:
-
-- While AI generation is running, the middle of the screen should show part of the AI vs AI debate process.
-- The debate preview is limited to the center area of the screen.
-- Top and bottom areas use dark gradient blur/scrim treatment so the user's attention stays on the generating debate.
-- The loading state must represent real generation steps, not fake static content.
+This is the current Android replacement for the previous user-facing Argument Graph path. It should be treated as a real debate-support workflow rather than a decorative diagram.
 
 Content:
 
-- Topic title
-- Graph canvas
-- Nodes for claims, evidence, objections, rebuttals, or other argument units
-- Directed edges showing relationships
-- Relationship labels such as supports, refutes, and relates
-- Selected node detail panel
-- Add node action
-- Graph controls for movement or reset when needed
-
-Empty state behavior:
-
-- Primary action: Generate with AI
-- Secondary action: Add Argument manually
-- Manual graph creation remains available without AI
+- Text input for pasted opponent constructive material
+- Analyze button
+- Loading state while the configured AI Provider analyzes the text
+- One claim card per extracted claim
+- Expandable details for original quote, issue type, explanation, and rebuttal points
+- AI-generated disclaimer beneath generated analysis
 
 Visual rules:
 
-- Supportive relationships can use cool green or cyan
-- Refuting relationships can use warm salmon
-- Related/neutral relationships can use muted amber
-- Arrows should show direction clearly
-- Labels must remain readable on the dark background
-- Node spacing should prioritize readable titles over fitting everything tightly.
-- Initial graph scale may be smaller so the full relationship structure is visible without title overlap.
-- Node titles should wrap to short two-line labels when possible instead of overlapping nearby nodes.
+- Claim cards must be readable during debate preparation.
+- Rebuttal points should be separated into individual framed panels.
+- The screen must not display raw JSON.
+- The screen must not imply live recording support until that Android feature is implemented.
 
 ### Fallacy Detector
 
@@ -518,10 +508,13 @@ Content:
 
 - Donation/support entry
 - Language segmented control
+- Optional MBTI selector for local recommendation personalization
 - Provider list with enabled/disabled state
 - Provider detail screen for API key, model, base URL, save, and test connection
 
 Settings should be calm and utilitarian. Configuration success and errors must be visible.
+
+The MBTI selector is optional and skippable. Its visual treatment should be quieter than provider setup because it has low algorithmic weight.
 
 ## Navigation
 
@@ -534,7 +527,7 @@ Primary bottom navigation should expose the main destinations:
 
 The Tools section should be its own page, not only a cluster of home cards. It should include:
 
-- Argument Relationship Graph
+- Constructive Analysis
 - Rebuttal Trainer
 - Fallacy Detector
 - AI Hallucination Detector external link
@@ -556,7 +549,7 @@ Use simple line icons that are readable at mobile sizes. Icons should support me
 
 - Trophy for results
 - Message bubble for debate
-- Network or nodes for graph
+- Reasoning or psychology icon for constructive analysis
 - Alert or logic symbol for fallacy detection
 - Heart for donation
 - Gear for settings
@@ -606,7 +599,7 @@ Apply this to:
 
 - AI debate responses
 - AI judging summaries and result explanations
-- Argument Relationship Graph generated nodes and generation debate previews
+- Constructive Analysis claim explanations and rebuttal points
 - Fallacy detection result explanations
 - Rebuttal trainer generated prompts, scores, feedback, breakdowns, advice, and AI chat replies
 
