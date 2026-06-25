@@ -147,7 +147,11 @@ fun TopicSelectionScreen(
                     }
 
                     items(filtered, key = { it.id }) { topic ->
-                        TopicCard(topic = topic, onClick = { onTopicSelected(topic.id) })
+                        TopicCard(
+                            topic = topic,
+                            usageCount = uiState.topicUsageCounts[topic.id] ?: 0,
+                            onClick = { onTopicSelected(topic.id) }
+                        )
                     }
                 }
             }
@@ -170,6 +174,19 @@ fun TopicSelectionScreen(
             }
         }
     }
+    }
+
+    uiState.customTopicError?.let { error ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearCustomTopicError() },
+            title = { Text(t.appTitle) },
+            text = { Text(error) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearCustomTopicError() }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 
     // Custom topic dialog
@@ -229,8 +246,10 @@ private fun glassFilterChipBorder(selected: Boolean) = FilterChipDefaults.filter
 @Composable
 private fun TopicCard(
     topic: com.aidebate.domain.model.DebateTopic,
+    usageCount: Int,
     onClick: () -> Unit
 ) {
+    val t = LocalTranslation.current
     GlassCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -252,6 +271,12 @@ private fun TopicCard(
                     Text(topic.description, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
+                Text(
+                    "${topic.category} · $usageCount ${t.debateBadge.lowercase()}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.48f),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
             Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
         }

@@ -28,7 +28,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
@@ -195,7 +194,7 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(Spacing.md)
                 ) {
-                    ToolTile(t.argumentMap, Icons.Filled.AccountTree, Secondary, onArgumentMap, Modifier.weight(1f))
+                    ToolTile(t.argumentMap, Icons.Filled.Psychology, Secondary, onArgumentMap, Modifier.weight(1f))
                     ToolTile(t.rebuttalTrainer, Icons.Filled.Timer, WarmGlow, onRebuttalTrainer, Modifier.weight(1f))
                     ToolTile(t.fallacyDetector, Icons.Filled.Search, Tertiary, onFallacyDetector, Modifier.weight(1f))
                 }

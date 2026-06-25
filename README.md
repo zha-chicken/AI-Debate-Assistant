@@ -21,7 +21,7 @@ Android is available now. iOS is planned next.
 - Debate against AI in structured or free-flow formats.
 - Watch AI-vs-AI debates from both sides of an issue.
 - Practice face-to-face debate on one device.
-- Generate Argument Relationship Graphs from AI-vs-AI debate context.
+- Analyze an opponent's constructive speech and reveal claim-level rebuttal points.
 - Train rebuttals under a timer and receive AI scoring.
 - Detect logical fallacies in pasted arguments.
 - Open an external AI hallucination detector from the tools page.
@@ -29,6 +29,20 @@ Android is available now. iOS is planned next.
 - See clear AI-generated content disclaimers under generated content.
 
 All app features are free. There is no paywall. The app uses a support/donation QR code instead of premium gating.
+
+## Current Android Parity Update
+
+This Android branch has been moved closer to the current iOS Rhetorix direction:
+
+- The user-facing Argument Graph entry has been replaced with Constructive Analysis.
+- Constructive Analysis uses the same configured AI Provider and fail-closed safety layer as debate generation.
+- The analysis UI first shows extracted claims; tapping a claim expands original quote, challenge explanation, and rebuttal points.
+- The local preset topic library now seeds 300 debate topics adapted from the iOS topic library.
+- Existing installs are not reset: missing default topics are added by title when the app starts.
+- Topic rows show the current user's local debate count for that topic instead of fake global popularity.
+- Custom topic creation now runs through content safety before saving.
+
+Live recording analysis from the iOS version is not yet implemented on Android. The Android MVP currently provides the reliable paste-and-analyze mode.
 
 ## AI Providers
 
@@ -90,7 +104,7 @@ Key screens include:
 - Debate history
 - Settings
 - Provider configuration
-- Argument map
+- Constructive analysis
 - Rebuttal trainer
 - Fallacy detector
 - Tools page

@@ -17,7 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Psychology
@@ -83,12 +82,12 @@ fun ToolsScreen(
     val uriHandler = LocalUriHandler.current
     val tools = listOf(
         ToolCardUi(
-            id = "argument_graph",
+            id = "constructive_analysis",
             title = t.argumentMap,
-            subtitle = "Map how claims, evidence, objections, and rebuttals connect.",
-            icon = Icons.Filled.AccountTree,
+            subtitle = t.argumentMapSubtitle,
+            icon = Icons.Filled.Psychology,
             accent = Primary,
-            requiresAiProvider = false,
+            requiresAiProvider = true,
             isExternalLink = false,
             destination = ToolDestination.Internal,
         ),
@@ -168,7 +167,7 @@ fun ToolsScreen(
                         tool = tool,
                         onClick = {
                             when (tool.id) {
-                                "argument_graph" -> onArgumentGraph()
+                                "constructive_analysis" -> onArgumentGraph()
                                 "rebuttal_trainer" -> onRebuttalTrainer()
                                 "fallacy_detector" -> onFallacyDetector()
                                 "hallucination_detector" -> uriHandler.openUri(HALLUCINATION_DETECTOR_URL)

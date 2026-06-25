@@ -21,3 +21,7 @@ interface RebuttalTrainerRepository {
     fun getAttempts(sessionId: String): Flow<List<RebuttalAttempt>>
     suspend fun saveAttempt(attempt: RebuttalAttempt)
 }
+
+interface ConstructiveAnalysisRepository {
+    suspend fun analyzeConstructive(text: String): List<ConstructiveAnalysisIssue>
+}

@@ -21,6 +21,7 @@ import com.aidebate.presentation.setup.DebateSetupScreen
 import com.aidebate.presentation.topic.TopicSelectionScreen
 import com.aidebate.presentation.tools.ToolsScreen
 import com.aidebate.presentation.argumentmap.ArgumentMapScreen
+import com.aidebate.presentation.constructive.ConstructiveAnalysisScreen
 import com.aidebate.presentation.rebuttal.RebuttalTrainerScreen
 import com.aidebate.presentation.fallacy.FallacyDetectorScreen
 import com.aidebate.presentation.facetoface.FaceToFaceScreen
@@ -56,6 +57,7 @@ sealed class Screen(val route: String) {
         fun createRoute() = "rebuttal_trainer"
     }
     data object FallacyDetector : Screen("fallacy_detector")
+    data object ConstructiveAnalysis : Screen("constructive_analysis")
     data object FaceToFace : Screen("facetoface/{sessionId}") {
         fun createRoute(sessionId: String) = "facetoface/$sessionId"
     }
@@ -93,7 +95,7 @@ fun AppNavHost(
                 onSettings = { navController.navigate(Screen.Settings.route) },
                 onDonation = { navController.navigate(Screen.Donation.route) },
                 onArgumentMap = {
-                    navController.navigate(Screen.TopicSelection.createRoute(Screen.TopicSelection.TARGET_ARGUMENT_MAP))
+                    navController.navigate(Screen.ConstructiveAnalysis.route)
                 },
                 onRebuttalTrainer = { navController.navigate(Screen.RebuttalTrainer.route) },
                 onFallacyDetector = { navController.navigate(Screen.FallacyDetector.route) },
@@ -196,7 +198,7 @@ fun AppNavHost(
         composable(Screen.Tools.route) {
             ToolsScreen(
                 onArgumentGraph = {
-                    navController.navigate(Screen.TopicSelection.createRoute(Screen.TopicSelection.TARGET_ARGUMENT_MAP))
+                    navController.navigate(Screen.ConstructiveAnalysis.route)
                 },
                 onRebuttalTrainer = { navController.navigate(Screen.RebuttalTrainer.route) },
                 onFallacyDetector = { navController.navigate(Screen.FallacyDetector.route) },
@@ -260,6 +262,12 @@ fun AppNavHost(
 
         composable(Screen.FallacyDetector.route) {
             FallacyDetectorScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.ConstructiveAnalysis.route) {
+            ConstructiveAnalysisScreen(
                 onBack = { navController.popBackStack() }
             )
         }

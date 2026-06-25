@@ -68,6 +68,16 @@ data class FallacyResult(
     val explanation: String
 )
 
+data class ConstructiveAnalysisIssue(
+    val id: String = UUID.randomUUID().toString(),
+    val claim: String,
+    val issueType: String,
+    val quote: String = "",
+    val explanation: String = "",
+    val rebuttalPoints: List<String> = emptyList(),
+    val severity: String = "Medium"
+)
+
 data class FallacyReference(
     val name: String,
     val description: String,

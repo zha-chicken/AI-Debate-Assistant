@@ -64,6 +64,9 @@ interface DebateTopicDao {
 
     @Query("SELECT COUNT(*) FROM debate_topics")
     suspend fun count(): Int
+
+    @Query("SELECT title FROM debate_topics")
+    suspend fun getAllTitles(): List<String>
 }
 
 @Dao

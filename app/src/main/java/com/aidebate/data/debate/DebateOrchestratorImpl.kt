@@ -80,6 +80,7 @@ class DebateOrchestratorImpl @Inject constructor(
 
     override suspend fun submitUserTurn(content: String): DebateTurn {
         val currentSession = _session.value ?: error("No active session")
+        if (_isThinking.value) error("AI response already in progress")
         val responseConfig = providerConfigRepository.getConfig(currentSession.providerOpposition)
         contentSafetyRepository.assertSafe(
             text = content,
@@ -147,6 +148,7 @@ class DebateOrchestratorImpl @Inject constructor(
 
     override suspend fun advanceAiTurn(): DebateTurn {
         val currentSession = _session.value ?: error("No active session")
+        if (_isThinking.value) error("AI response already in progress")
 
         // Use current speaker from state machine (the one WaitingForTap showed)
         val speakerRole = stateMachine?.currentSpeakerState()

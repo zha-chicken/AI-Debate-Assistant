@@ -219,6 +219,57 @@ Text fields should use glass containers with white input text, subtle borders, a
 
 Password/API key inputs should support visibility toggles and clear enabled/disabled states.
 
+## Current Screen Notes
+
+### Home and Tools
+
+The preparation tool that was previously exposed as `Argument Graph` is now presented to users as `Constructive Analysis`.
+
+The home dashboard should still make debate the dominant product action. Preparation tools must feel secondary and compact:
+
+- New Debate remains the most prominent workflow.
+- Constructive Analysis, Rebuttal Trainer, and Fallacy Detector are smaller preparation entries.
+- Constructive Analysis uses the cyan/analysis accent and a reasoning-oriented icon.
+- The old visual argument graph is no longer a primary user-facing path.
+
+### Topic Selection
+
+Topic rows now show local usage counts, not global popularity.
+
+Designer-facing behavior:
+
+- The count means how many times this user has debated that topic on this device.
+- New users should see `0 debate`/`0 辩论`.
+- The count belongs in the secondary metadata line with category information.
+- It must never be styled like a public popularity score or leaderboard.
+
+The default topic library now contains 300 preset topics. Category chips may therefore scroll horizontally and the topic list should remain dense, searchable, and easy to scan.
+
+### Constructive Analysis
+
+Constructive Analysis is a debate-preparation screen for breaking down an opponent's constructive speech.
+
+Interaction model:
+
+- The user pastes an opponent constructive speech.
+- The primary action analyzes the text using the configured AI Provider.
+- A loading spinner is shown while analysis is running.
+- Results are not shown as raw JSON.
+- The first level is a list of claim cards.
+- Tapping a claim expands the card.
+- Expanded content shows original quote, why the claim can be challenged, and separate rebuttal point panels.
+- Each AI-generated analysis area includes the AI-generated disclaimer.
+
+Visual hierarchy:
+
+- Input card: cyan accent, large enough for pasted speeches.
+- Claim card: one card per detected claim.
+- Issue type: compact chip at the top of the card.
+- Severity: small secondary label, not an alarm unless high severity.
+- Rebuttal points: each point in its own framed panel so users can scan them during preparation.
+
+The Android version currently supports paste-based analysis. Live recording/transcription analysis from the iOS version should be treated as future Android work until microphone permission, speech recognition lifecycle, and incremental claim analysis are fully implemented.
+
 ## Main Screens
 
 ### Home
